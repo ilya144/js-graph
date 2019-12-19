@@ -11,7 +11,7 @@ module.exports = {
     main: path.resolve(__dirname, "./src/index.js")
   },
   output: {
-    publicPath: './public',
+    // publicPath: './public',
     path: path.resolve(__dirname, './build/'),
     filename: 'static/js/[name].js'
   },
@@ -27,7 +27,7 @@ module.exports = {
           inject: true,
           template: "./public/index.html",
           // chunks: ["popup"],
-          filename: "popup.html"
+          filename: "index.html"
         },
         isEnvProduction
           ? {

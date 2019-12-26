@@ -105,3 +105,6 @@ dist
 
 # build folder
 build/
+
+# firebase cache
+.firebase/

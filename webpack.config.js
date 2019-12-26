@@ -47,7 +47,8 @@ module.exports = {
           inject: true,
           template: "./public/index.html",
           // chunks: ["popup"],
-          filename: "index.html"
+          filename: "index.html",
+          favicon: "./public/favicon.ico"
         },
         isEnvProduction
           ? {

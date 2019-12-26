@@ -15,6 +15,26 @@ module.exports = {
     path: path.resolve(__dirname, './build/'),
     filename: 'static/js/[name].js'
   },
+  devServer:{
+    port: 3000,
+    contentBase: path.join(__dirname, "./public"),
+    stats: {
+      colors: true,
+      hash: false,
+      version: false,
+      timings: false,
+      assets: false,
+      chunks: false,
+      modules: false,
+      reasons: false,
+      children: false,
+      source: false,
+      errors: true,
+      errorDetails: false,
+      warnings: false,
+      publicPath: false
+    }
+  },
   plugins: [
     new CleanWebpackPlugin(),
     new MiniCssExtractPlugin({

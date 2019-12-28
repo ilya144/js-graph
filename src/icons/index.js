@@ -1,0 +1,16 @@
+export { default as ArrowsIcon } from "./arrows";
+export { default as PictogramIcon } from "./pictogram";
+export { default as QuestionIcon } from "./question";
+export { default as GroupIcon } from "./group";
+export { default as ArrowsToCenterIcon } from "./arrowsToCenter";
+export { default as TargetIcon } from "./target";
+export { default as MoreIcon } from "./more";
+export { default as DocumentsIcon } from "./documents";
+export { default as ChainIcon } from "./chain";
+export { default as QuestionSmallIcon } from "./questionSmall";
+export { default as HorizontalIcon } from "./horizontal";
+export { default as VerticalIcon } from "./vertical";
+export { default as BurgerIcon } from "./burger";
+export { default as ArrowsExpandIcon } from "./arrowsExpand";
+export { default as ThemeIcon } from "./theme";
+export { default as ArrowDownIcon } from "./arrowDown";

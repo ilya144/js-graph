@@ -1,0 +1,16 @@
+export { default as Back } from "./back.svg";
+export { default as Bank } from "./bank.svg";
+export { default as Bankrupt } from "./bankrupt.svg";
+export { default as Custom } from "./custom.svg";
+export { default as Download } from "./download.svg";
+export { default as Firewall } from "./firewall.svg";
+export { default as Industry } from "./industry.svg";
+export { default as Ip } from "./ip.svg";
+export { default as Gavel } from "./gavel.svg";
+export { default as Recycling } from "./recycling.svg";
+export { default as Reserved } from "./reserved.svg";
+export { default as ShopBack } from "./shop-back.svg";
+export { default as Shop } from "./shop.svg";
+export { default as Suitcase } from "./suitcase.svg";
+export { default as WalletDown } from "./wallet-down.svg";
+export { default as WalletPlus } from "./wallet-plus.svg";

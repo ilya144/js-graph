@@ -43,7 +43,7 @@ const SideBar = props => {
 
   return (
     <Box className={classes.sidebar}>
-      <QuestionIcon isDark />
+      <QuestionIcon isDark onClick={props.showLegend} />
       <PictogramIcon />
       <ArrowsIcon />
       <GroupIcon />

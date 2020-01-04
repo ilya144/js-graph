@@ -66,7 +66,7 @@ const Header = props => {
         width="220px"
       >
         <BurgerIcon />
-        <QuestionSmallIcon />
+        <QuestionSmallIcon isDark={props.isDark} onClick={props.showLegend} />
         <HorizontalIcon />
         <VerticalIcon />
       </Box>

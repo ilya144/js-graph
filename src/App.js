@@ -8,6 +8,8 @@ import GraphPage from "./components/graphPage";
 import Header from "./components/header";
 import Minimap from "./components/minimap";
 
+import Legend from "./icons/legend/legend.svg";
+
 const useClasses = makeStyles(() => ({
   app: {
     width: "100%",
@@ -34,21 +36,37 @@ const App = () => {
   const classes = useClasses();
   const [zoom, setZoom] = useState(1);
   const [useCallback, setCallback] = useState(null);
+  const [showLegend, setShowLegend] = useState(false);
+  const toggleLegend = () => {
+    setCallback(null);
+    setShowLegend(!showLegend);
+  };
 
   return (
     <Container className={classes.app}>
-      <Header zoom={zoom} useCallback={useCallback} />
+      <Header
+        zoom={zoom}
+        useCallback={useCallback}
+        isDark={showLegend}
+        showLegend={toggleLegend}
+      />
 
-      <Box className={classes.content}>
-        <SlideMenu useCallback={useCallback} />
-        <GraphPage
-          setZoom={setZoom}
-          useCallback={useCallback}
-          setCallback={setCallback}
-        />
-        <SideBar />
-        <Minimap zoom={zoom} setZoom={setZoom} />
-      </Box>
+      {showLegend ? (
+        <Box maxWidth="100%" overflow="scroll">
+          <img src={Legend} alt="legend" />
+        </Box>
+      ) : (
+        <Box className={classes.content}>
+          <SlideMenu useCallback={useCallback} />
+          <GraphPage
+            setZoom={setZoom}
+            useCallback={useCallback}
+            setCallback={setCallback}
+          />
+          <SideBar useCallback={useCallback} showLegend={toggleLegend} />
+          <Minimap zoom={zoom} setZoom={setZoom} useCallback={useCallback} />
+        </Box>
+      )}
     </Container>
   );
 };

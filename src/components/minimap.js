@@ -1,7 +1,11 @@
 import React from "react";
 import { Box } from "@material-ui/core";
 
-const Minimap = ({ zoom, setZoom, ...props }) => {
+const Minimap = ({ zoom, ...props }) => {
+  const setZoom = k => {
+    props.useCallback.setZoom(k);
+    props.setZoom(k);
+  };
   return (
     <Box
       style={{

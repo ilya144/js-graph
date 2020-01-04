@@ -1,4 +1,4 @@
-import React, { useState, Fragment } from "react";
+import React, { useState } from "react";
 import { Typography, Icon, Box, Grid } from "@material-ui/core";
 import { makeStyles } from "@material-ui/core/styles";
 import jsonData from "../d3utils/graph-data";
@@ -12,7 +12,6 @@ const useClasses = makeStyles(theme => ({
 }));
 
 const SlideMenu = props => {
-  console.log(jsonData.data.detail);
   const classes = useClasses();
   const [open, setopen] = useState(false);
 

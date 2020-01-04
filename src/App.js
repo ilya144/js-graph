@@ -38,7 +38,6 @@ const App = () => {
   const [useCallback, setCallback] = useState(null);
   const [showLegend, setShowLegend] = useState(false);
   const toggleLegend = () => {
-    setCallback(null);
     setShowLegend(!showLegend);
   };
 

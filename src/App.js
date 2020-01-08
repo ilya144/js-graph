@@ -37,17 +37,18 @@ const App = () => {
   const [zoom, setZoom] = useState(1);
   const [useCallback, setCallback] = useState(null);
   const [showLegend, setShowLegend] = useState(false);
-  const toggleLegend = () => {
-    setShowLegend(!showLegend);
-  };
+  const toggleLegend = () => setShowLegend(!showLegend);
+  const [isVertical, setVertical] = useState(false);
 
   return (
     <Container className={classes.app}>
       <Header
         zoom={zoom}
         useCallback={useCallback}
-        isDark={showLegend}
-        showLegend={toggleLegend}
+        showLegend={showLegend}
+        toggleLegend={toggleLegend}
+        isVertical={isVertical}
+        setVertical={setVertical}
       />
 
       {showLegend ? (

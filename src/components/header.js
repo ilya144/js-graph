@@ -55,6 +55,8 @@ const Header = props => {
   document.onfullscreenchange = () => {
     return document.fullscreen ? setFull(true) : setFull(false);
   };
+  const setVertical = () => props.setVertical(true);
+  const setHorizontal = () => props.setVertical(false);
 
   return (
     <Box className={classes.header}>
@@ -66,9 +68,12 @@ const Header = props => {
         width="220px"
       >
         <BurgerIcon />
-        <QuestionSmallIcon isDark={props.isDark} onClick={props.showLegend} />
-        <HorizontalIcon />
-        <VerticalIcon />
+        <QuestionSmallIcon
+          isDark={props.showLegend}
+          onClick={props.toggleLegend}
+        />
+        <HorizontalIcon isDark={!props.isVertical} onClick={setHorizontal} />
+        <VerticalIcon isDark={props.isVertical} onClick={setVertical} />
       </Box>
       <Box className={classes.clickable} display="flex" alignItems="center">
         <Typography

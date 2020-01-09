@@ -40,8 +40,6 @@ const GraphPage = props => {
   useEffect(() => {
     if (graphRef) {
       const graph = new Graph(graphRef.current, props, Data.data);
-      // eslint-disable-next-line no-console
-      console.log(graph);
     }
   }, [graphRef]);
 

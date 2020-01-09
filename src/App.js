@@ -62,6 +62,7 @@ const App = () => {
             setZoom={setZoom}
             useCallback={useCallback}
             setCallback={setCallback}
+            isVertical={isVertical}
           />
           <SideBar useCallback={useCallback} showLegend={toggleLegend} />
           <Minimap zoom={zoom} setZoom={setZoom} useCallback={useCallback} />

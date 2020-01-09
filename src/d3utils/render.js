@@ -51,7 +51,7 @@ class GraphRender {
       .exit();
   }
 
-  draw_by_lvl_index(entry, data) {
+  draw_nodes_by_lvl_index(entry, data) {
     const g = entry
       .append("g")
       .attr("class", "nodes")
@@ -116,7 +116,7 @@ class GraphRender {
       .append("xhtml:p")
       .style("color", "#fff")
       .style("max-width", "50%")
-      .text(d => d.inn);
+      .text(d => `${d.inn} ${d.parent && d.parent.inn}`);
     container
       .append("xhtml:p")
       .style("color", "#fff")
@@ -125,7 +125,7 @@ class GraphRender {
   }
 
   draw_collapsed(entry, number) {
-    g = entry
+    const g = entry
       .append("g")
       .style("background", "#171e2f")
       .attr("width", "112")
@@ -190,8 +190,8 @@ class GraphRender {
         const x1 = 320 * (d.lvl - 1) + 50;
         const y1 = 86 + d.lvlIndex * 80;
         const p = this.nodes.getNode(this.edges.getEdgeByChild(d.pk).bid);
-        const x2 = 320 * (d.lvl - 1) + 50;
-        const y2 = 86 + d.lvlIndex * 80;
+        const x2 = 320 * (d.parent.lvl - 1) + 50;
+        const y2 = 86 + d.parent.lvlIndex * 80;
 
         c.moveTo(x1, y1);
         c.lineTo(x2, y2);

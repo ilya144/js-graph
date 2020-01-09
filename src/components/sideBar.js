@@ -40,18 +40,23 @@ const useClasses = makeStyles(() => ({
 
 const SideBar = props => {
   const classes = useClasses();
+  const [showMore, setShowMore] = useState(false);
 
   return (
     <Box className={classes.sidebar}>
-      <QuestionIcon isDark onClick={props.showLegend} />
+      {/* <QuestionIcon isDark onClick={props.showLegend} /> */}
       <PictogramIcon />
       <ArrowsIcon />
       <GroupIcon />
-      <ArrowsToCenterIcon isDark />
-      <TargetIcon isDark />
-      <MoreIcon isDark />
-      <DocumentsIcon />
-      <ChainIcon />
+      {/* <ArrowsToCenterIcon isDark /> */}
+      {/* <TargetIcon isDark /> */}
+      <MoreIcon isDark={showMore} onClick={() => setShowMore(!showMore)} />
+      {showMore ? (
+        <>
+          <DocumentsIcon />
+          <ChainIcon />
+        </>
+      ) : null}
     </Box>
   );
 };

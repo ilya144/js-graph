@@ -27,12 +27,13 @@ class Node {
     if (data === undefined) {
       throw Error("Node data required");
     }
-    
+
     Object.entries(data).map(([key, value]) => {
       this[key] = value;
       return this;
     });
 
+    this.lvl = this.level; // real level, which used on rendering
     this.isDuplicate = isDuplicate;
   }
 

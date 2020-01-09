@@ -1,32 +1,31 @@
 import * as d3 from "d3";
 
 class GraphRender {
-  draw_background(entry, data, position = "vertical") {
+  draw_background(entry, data, isVertical = false) {
     entry
       .append("foreignObject")
       .attr("width", 320 * data.length)
-      .attr("height", "1080")
+      .attr("height", 240 * data.length)
       .append("xhtml:div")
       .attr(
         "style",
         `
         display: flex;
-        flex-direction: row;
         width: 100%;
-        height: 1080px;
+        height: 100%;
         background: #1c2436;
       `
       )
+      .style("flex-direction", isVertical ? "column" : "row")
       .selectAll("empty")
       .data(data)
       .enter()
       .append("xhtml:div")
       .attr("class", "pie")
-      .style("min-width", "320px")
-      .style("min-height", "1080px")
+      .style("min-width", isVertical ? "100%" : "320px")
+      .style("min-height", isVertical ? "240px" : "100%")
       .style("background", (d, i) => (i % 2 === 0 ? "#1c2436" : "#181E2F"))
       .append("xhtml:p")
-      // eslint-disable-next-line no-param-reassign
       .text((d, i) => ++i)
       // .attr("class", classes.pieDigit)
       .attr(
@@ -50,6 +49,79 @@ class GraphRender {
       `
       )
       .exit();
+  }
+
+  draw_by_lvl_index(entry, data) {
+    const g = entry
+      .append("g")
+      .attr("class", "nodes")
+      .selectAll("empty")
+      .data(data)
+      .join("g")
+      .attr("id", d => d.pk)
+      .attr("transform", d => {
+        const x = 320 * (d.lvl - 1) + 50;
+        const y = 86 + d.lvlIndex * 80;
+
+        return `translate(${x}, ${y})`;
+      })
+      .attr("fill", "none")
+      .attr("width", "220")
+      .attr("height", "64")
+      .attr("viewBox", "0 0 220 64");
+
+    g.append("rect")
+      .attr("x", "7")
+      .attr("y", "1")
+      .attr("width", "218")
+      .attr("height", "62")
+      .attr("rx", d => (d.status === 2 ? "16" : "32"))
+      .attr("stroke", "#5A6487")
+      .attr("stroke-width", "2");
+
+    g.filter(d => d.leaf === "false")
+      .append("circle")
+      .attr("class", "right")
+      .attr("cx", "225")
+      .attr("cy", "32")
+      .attr("r", "5.5")
+      .attr("fill", "#5A6487")
+      .attr("stroke", "#181E2F")
+      .attr("stroke-width", "3");
+
+    g.filter(d => d.root === "false")
+      .append("circle")
+      .attr("class", "left")
+      .attr("cx", "7")
+      .attr("cy", "32")
+      .attr("r", "5.5")
+      .attr("fill", "#5A6487")
+      .attr("stroke", "#181E2F")
+      .attr("stroke-width", "3");
+
+    const container = g
+      .append("foreignObject")
+      .attr("x", "7")
+      .attr("y", "1")
+      .attr("width", "218")
+      .attr("height", "62")
+      .append("xhtml:div")
+      .style("width", "100%")
+      .style("height", "100%")
+      .style("display", "flex")
+      .style("flex-direction", "row")
+      .style("justify-content", "space-around")
+      .style("align-items", "center");
+    container
+      .append("xhtml:p")
+      .style("color", "#fff")
+      .style("max-width", "50%")
+      .text(d => d.inn);
+    container
+      .append("xhtml:p")
+      .style("color", "#fff")
+      .style("max-width", "30%")
+      .text(d => (d.isDuplicate ? "dupl" : "main"));
   }
 
   draw_collapsed(entry, number) {
@@ -97,6 +169,35 @@ class GraphRender {
       .attr("fill", "#5BB95B");
 
     // TODO append numbers
+  }
+
+  draw_edges_old(entry, data = "nodes") {
+    const nodes = data.filter(node => node.parent);
+    const links = entry
+      .append("g")
+      .attr("class", "edges")
+      .attr("fill", "none")
+      .attr("stroke-width", 2)
+      .selectAll("empty")
+      .data(nodes)
+      .join("g");
+
+    links
+      .append("path")
+      .attr("stroke", "#5A6487")
+      .attr("d", d => {
+        const c = d3.path();
+        const x1 = 320 * (d.lvl - 1) + 50;
+        const y1 = 86 + d.lvlIndex * 80;
+        const p = this.nodes.getNode(this.edges.getEdgeByChild(d.pk).bid);
+        const x2 = 320 * (d.lvl - 1) + 50;
+        const y2 = 86 + d.lvlIndex * 80;
+
+        c.moveTo(x1, y1);
+        c.lineTo(x2, y2);
+
+        return c;
+      });
   }
 }
 

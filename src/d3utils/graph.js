@@ -57,12 +57,14 @@ class Graph extends GraphRender {
     this.set_lvl_indexes();
 
     this.sortByLvlIndex();
-    this.draw_nodes_by_lvl_index(entry, this.nodes.getAll());
-    this.draw_edges_old(entry, this.nodes.getAll());
+    this.define_coords();
+
+    // this.draw_nodes_by_lvl_index(entry, this.nodes.getAll());
+    this.draw_nodes_by_coords(entry, this.nodes.getAll());
+    // this.draw_edges_old(entry, this.nodes.getAll());
+    this.draw_edges(entry, this.nodes.getAll());
 
     console.log(this.nodes);
-
-    this.sortByLvlIndex();
   }
 
   create_svg(root, entryRef) {
@@ -194,19 +196,11 @@ class Graph extends GraphRender {
   }
 
   sortByLvlIndex() {
-    function getMaxLvl(nodes = Array([new Node()])) {
-      return nodes.reduce((max_lvl, elem) => {
-        if (elem.lvl > max_lvl) return elem.lvl;
-        return max_lvl;
-      }, 0);
-    }
-    const byField = str => (a, b) => (a[str] > b[str] ? 1 : -1);
-
     if (this.nodes === undefined || this.edges === undefined)
       throw Error("define stores first");
 
     const nodes = this.nodes.getAll();
-    const maxLvl = getMaxLvl(nodes);
+    const maxLvl = this.getLastLvl(nodes);
     const minLvl = 1; // better make in functional style, not const
 
     const nodesByLvls = [];
@@ -278,7 +272,112 @@ class Graph extends GraphRender {
     return nodes;
   }
 
-  define_coords() {}
+  // inner function in define_coords
+  set_nodes_coords(nodes, i) {
+    nodes
+      .filter(node => node.lvl === i)
+      .sort(this.sortByField("lvlIndex"))
+      .map((node, index, array) => {
+        node.x = 320 * (node.lvl - 1) + 50;
+        node.y = nodes
+          .filter(innerNode => innerNode.parent === node)
+          .reduce(...this.getCoordReducer())
+          .average();
+
+        // todo checks
+        if (index === 0) {
+          if (isNaN(node.y)) node.y = 86 + node.lvlIndex * 80;
+        } else {
+          if (isNaN(node.y)) node.y = 86 + node.lvlIndex * 80;
+
+          const diff = node.y - array[index - 1].y;
+          if (diff < 80) node.y += 80 - diff;
+        }
+
+        return [node.x, node.y];
+      });
+  }
+
+  define_coords() {
+    if (this.nodes === undefined || this.edges === undefined)
+      throw Error("define stores first");
+
+    const nodes = this.nodes.getAll();
+    const last_lvl = this.getLastLvl(nodes);
+    const main_lvl = this.getMainLvl(nodes);
+
+    nodes
+      .filter(node => node.lvl === main_lvl)
+      .map(node => {
+        node.x = 320 * (node.lvl - 1) + 50;
+        node.y = 86 + node.lvlIndex * 80;
+
+        return node;
+      });
+
+    if (last_lvl === main_lvl) {
+      for (let i = last_lvl - 1; i >= 1; i--) {
+        this.set_nodes_coords(nodes, i);
+      }
+    } else {
+      // to right
+      for (let i = main_lvl + 1; i <= last_lvl; i++) {
+        this.set_nodes_coords(nodes, i);
+      }
+      // to left
+      for (let i = main_lvl - 1; i >= 1; i--) {
+        this.set_nodes_coords(nodes, i);
+      }
+    }
+  }
+
+  define_joints() {}
+
+  getLastLvl(nodes) {
+    if (!(nodes[0] instanceof Node))
+      throw Error("Argument nodes should be array of Node objects");
+
+    return nodes.reduce((last_lvl, elem) => {
+      if (elem.lvl > last_lvl) return elem.lvl;
+      return last_lvl;
+    }, 0);
+  }
+
+  // get lvl with maximum of nodes
+  getMainLvl(nodes) {
+    if (!(nodes[0] instanceof Node))
+      throw Error("Argument nodes should be array of Node objects");
+
+    return nodes
+      .reduce((acc, node) => {
+        if (acc[node.lvl]) acc[node.lvl] += 1;
+        else acc[node.lvl] = 1;
+
+        return acc;
+      }, [])
+      .reduce((max, value, index) => (value > max ? index : max), 0);
+  }
+
+  sortByField(str) {
+    return (a, b) => (a[str] > b[str] ? 1 : -1);
+  }
+
+  getCoordReducer() {
+    return [
+      (obj, node) => {
+        obj.sum += node.y;
+        obj.count++;
+        return obj;
+      },
+      {
+        sum: 0,
+        count: 0,
+        average() {
+          return this.sum / this.count;
+        }
+      }
+    ];
+  }
 }
 
 export default Graph;

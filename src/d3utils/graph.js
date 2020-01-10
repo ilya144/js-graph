@@ -62,9 +62,11 @@ class Graph extends GraphRender {
     // this.draw_nodes_by_lvl_index(entry, this.nodes.getAll());
     this.draw_nodes_by_coords(entry, this.nodes.getAll());
     // this.draw_edges_old(entry, this.nodes.getAll());
-    this.draw_edges(entry, this.nodes.getAll());
+    // this.draw_edges_by_parents(entry);
 
     console.log(this.nodes);
+    this.define_joints();
+    this.draw_edges_by_joints(entry, this.make_paths());
   }
 
   create_svg(root, entryRef) {
@@ -331,7 +333,108 @@ class Graph extends GraphRender {
     }
   }
 
-  define_joints() {}
+  define_joints() {
+    if (this.nodes === undefined || this.edges === undefined)
+      throw Error("define stores first");
+
+    const nodes = this.nodes.getAll();
+
+    // define joints parent (lvl n) - child (lvl n + 1)
+    nodes
+      .filter(node => node.parent)
+      .map(node => {
+        node.setJoint("left", node.parent);
+        node.parent.setJoint("right", node);
+        return node;
+      });
+
+    // define joints root - second node below him
+    const root = nodes.find(node => node.level === 0);
+    const rootChild = nodes.find(node => node.parent === root).unsetParent();
+
+    root.setJoint("leftDown", rootChild);
+    rootChild.setJoint("leftUp", root);
+
+    // define joints node - tech node below him
+    nodes
+      .filter(node => node.status === 2 && !node.parent)
+      .map(node => {
+        const topParent = this.nodes.getNode(
+          this.edges.getEdgeByChild(node.pk) &&
+            this.edges.getEdgeByChild(node.pk).sid
+        );
+
+        if (topParent) {
+          node.setJoint("rightUp", topParent);
+          topParent.setJoint("rightDown", node);
+        }
+
+        return node;
+      });
+  }
+
+  make_paths() {
+    if (this.nodes === undefined || this.edges === undefined)
+      throw Error("define stores first");
+
+    const nodes = this.nodes.getAll();
+    const paths = [];
+
+    // left upside-down
+    const root = nodes.find(node => node.level === 0);
+    paths.push({
+      source: { x: root.joints["leftDown"].x, y: root.joints["leftDown"].y },
+      target: {
+        x: root.joints["leftDown"].node.joints["leftUp"].x,
+        y: root.joints["leftDown"].node.joints["leftUp"].y
+      },
+      type: "vertical" // TODO CHANGE TYPE
+    });
+
+    // from child to parent
+    nodes
+      .filter(node => node.parent)
+      .map(node => {
+        paths.push({
+          source: {
+            x: node.parent.joints["right"].x,
+            y: node.parent.joints["right"].y
+          },
+          target: {
+            x: node.joints["left"].x,
+            y: node.joints["left"].y
+          },
+          type: "horizontal" // TODO CHANGE TYPE
+        });
+      });
+
+    // right upside-down
+    nodes
+      .filter(node => node.status === 2 && !node.parent)
+      .map(node => {
+        const topParent = this.nodes.getNode(
+          this.edges.getEdgeByChild(node.pk) &&
+            this.edges.getEdgeByChild(node.pk).sid
+        );
+
+        if (topParent) {
+          paths.push({
+            source: {
+              x: topParent.joints["rightDown"].x,
+              y: topParent.joints["rightDown"].y
+            },
+            target: {
+              x: node.joints["rightUp"].x,
+              y: node.joints["rightUp"].y
+            },
+            type: "vertical" // TODO CHANGE TYPE
+          });
+        }
+
+        return node;
+      });
+    return paths;
+  }
 
   getLastLvl(nodes) {
     if (!(nodes[0] instanceof Node))

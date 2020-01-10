@@ -1,21 +1,21 @@
-const path = require('path');
-const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const {CleanWebpackPlugin} = require('clean-webpack-plugin');
+const path = require("path");
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
+const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 
 const isEnvProduction = false;
 
 module.exports = {
-  mode: 'none', //'production'
+  mode: "none", //'production'
   entry: {
     main: path.resolve(__dirname, "./src/index.js")
   },
   output: {
     // publicPath: './public',
-    path: path.resolve(__dirname, './build/'),
-    filename: 'static/js/[name].js'
+    path: path.resolve(__dirname, "./build/"),
+    filename: "static/js/[name].js"
   },
-  devServer:{
+  devServer: {
     port: 3000,
     contentBase: path.join(__dirname, "./public"),
     stats: {
@@ -38,7 +38,7 @@ module.exports = {
   plugins: [
     new CleanWebpackPlugin(),
     new MiniCssExtractPlugin({
-      filename: 'static/css/[name].css',
+      filename: "static/css/[name].css"
     }),
     new HtmlWebpackPlugin(
       Object.assign(
@@ -62,8 +62,8 @@ module.exports = {
                 keepClosingSlash: true,
                 minifyJS: true,
                 minifyCSS: true,
-                minifyURLs: true,
-              },
+                minifyURLs: true
+              }
             }
           : undefined
       )
@@ -80,16 +80,21 @@ module.exports = {
       },
       {
         test: /\.css$/,
-        use: [{
-          loader: MiniCssExtractPlugin.loader,
-        },
-        'css-loader',]
+        use: [
+          {
+            loader: MiniCssExtractPlugin.loader
+          },
+          "css-loader"
+        ]
       },
       {
-        test: /.(jpg|jpeg|png|svg)$/,
-        use: ['file-loader'],
+        test: [/.(jpg|jpeg|png)$/, /legend\.svg/],
+        use: ["file-loader"]
       },
+      {
+        test: /nodeIcons\/[a-z-]+\.svg$/,
+        use: require.resolve("raw-loader")
+      }
     ]
   }
 };
-  

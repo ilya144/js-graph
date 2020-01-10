@@ -1,4 +1,5 @@
 import * as d3 from "d3";
+import types from "./types";
 
 class GraphRender {
   draw_background(entry, data, isVertical = false) {
@@ -124,6 +125,109 @@ class GraphRender {
       .text(d => (d.isDuplicate ? "dupl" : "main"));
   }
 
+  draw_nodes_by_coords(entry, data) {
+    const g = entry
+      .append("g")
+      .attr("class", "nodes")
+      .selectAll("empty")
+      .data(data)
+      .join("g")
+      .attr("id", d => d.pk)
+      .attr("transform", d => {
+        return `translate(${d.x}, ${d.y})`;
+      })
+      .attr("fill", "none")
+      .attr("width", "220")
+      .attr("height", "64")
+      .attr("viewBox", "0 0 220 64");
+
+    g.append("rect")
+      .attr("x", "7")
+      .attr("y", "1")
+      .attr("width", "218")
+      .attr("height", "62")
+      .attr("rx", d => (d.status === 2 ? "16" : "32"))
+      .attr("stroke", "#5A6487")
+      .attr("stroke-width", "2");
+
+    g.filter(d => d.leaf === "false")
+      .append("circle")
+      .attr("class", "right")
+      .attr("cx", "225")
+      .attr("cy", "32")
+      .attr("r", "5.5")
+      .attr("fill", "#5A6487")
+      .attr("stroke", "#181E2F")
+      .attr("stroke-width", "3");
+
+    g.filter(d => d.root === "false")
+      .append("circle")
+      .attr("class", "left")
+      .attr("cx", "7")
+      .attr("cy", "32")
+      .attr("r", "5.5")
+      .attr("fill", "#5A6487")
+      .attr("stroke", "#181E2F")
+      .attr("stroke-width", "3");
+
+    g.append("circle")
+      .attr("cx", "29")
+      .attr("cy", "1")
+      .attr("r", "5.5")
+      .attr("fill", "#5A6487")
+      .attr("stroke", "#181E2F")
+      .attr("stroke-width", "3");
+
+    g.append("circle")
+      .attr("cx", "29")
+      .attr("cy", "63")
+      .attr("r", "5.5")
+      .attr("fill", "#5A6487")
+      .attr("stroke", "#181E2F")
+      .attr("stroke-width", "3");
+
+    g.append("circle")
+      .attr("cx", "203")
+      .attr("cy", "1")
+      .attr("r", "5.5")
+      .attr("fill", "#5A6487")
+      .attr("stroke", "#181E2F")
+      .attr("stroke-width", "3");
+
+    g.append("circle")
+      .attr("cx", "203")
+      .attr("cy", "63")
+      .attr("r", "5.5")
+      .attr("fill", "#5A6487")
+      .attr("stroke", "#181E2F")
+      .attr("stroke-width", "3");
+
+    const container = g
+      .append("foreignObject")
+      .attr("x", "7")
+      .attr("y", "1")
+      .attr("width", "218")
+      .attr("height", "62")
+      .append("xhtml:div")
+      .style("width", "100%")
+      .style("height", "100%")
+      .style("display", "flex")
+      .style("flex-direction", "row")
+      .style("justify-content", "space-around")
+      .style("align-items", "center");
+    container
+      .append("xhtml:p")
+      .style("color", "#fff")
+      .style("max-width", "50%")
+      .text(d => `${d.short_name} ${d.inn}`);
+    container
+      .append("xhtml:div")
+      .style("color", "#fff")
+      .style("max-width", "30%")
+      .html(d => types[d.type]);
+    // .text(d => (d.isDuplicate ? "dupl" : "main"));
+  }
+
   draw_collapsed(entry, number) {
     const g = entry
       .append("g")
@@ -195,6 +299,79 @@ class GraphRender {
 
         c.moveTo(x1, y1);
         c.lineTo(x2, y2);
+
+        return c;
+      });
+  }
+
+  draw_edges_by_parents(entry) {
+    const data = this.nodes.getAll().filter(node => node.parent);
+    // const data =
+    const links = entry
+      .append("g")
+      .attr("class", "edges")
+      .attr("fill", "none")
+      .attr("stroke-width", 2)
+      .selectAll("empty")
+      .data(data)
+      .join("g");
+
+    links
+      .append("path")
+      .attr("stroke", "#5A6487")
+      .attr("d", d => {
+        const c = d3.path();
+
+        c.moveTo(d.x + 7, d.y + 32);
+        c.lineTo(d.parent.x + 227, d.parent.y + 32);
+
+        return c;
+      });
+  }
+
+  draw_edges_by_joints(entry, paths) {
+    const links = entry
+      .append("g")
+      .attr("class", "edges")
+      .attr("fill", "none")
+      .attr("stroke-width", 2)
+      .selectAll("empty")
+      .data(paths)
+      .join("g");
+
+    links
+      .append("path")
+      .attr("stroke", "#5A6487")
+      .attr("d", d => {
+        const c = d3.path();
+
+        if (d.type === "vertical") {
+          c.moveTo(d.source.x, d.source.y);
+          c.lineTo(d.target.x, d.target.y);
+        }
+
+        if (d.type === "horizontal") {
+          const s = d.source;
+          const t = d.target;
+          c.moveTo(s.x + 5, s.y);
+          c.lineTo(s.x + 20, s.y);
+
+          if (s.y !== t.y) {
+            const sign = t.y < s.y ? 1 : -1;
+            c.lineTo(s.x + 20, t.y + 15 * sign);
+
+            c.bezierCurveTo(
+              s.x + 20,
+              t.y + 15 * sign,
+              s.x + 20,
+              t.y,
+              s.x + 20 + 15,
+              t.y
+            );
+          }
+
+          c.lineTo(t.x - 5, t.y);
+        }
 
         return c;
       });

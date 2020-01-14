@@ -11,6 +11,11 @@ class Node {
    * isLeaf: true - исходящие узлы отсутствуют
    * isDulicate: true - узел является дупликатом
    *
+   * if isMegaNode: data = {
+   *                        countNodes: Number,
+   *                        leafNodes: Number,
+   *                        nodeList: Array<Node>
+   *                       }
    */
 
   static joints = {
@@ -22,7 +27,7 @@ class Node {
     right: { x: 225, y: 32, node: Node }
   };
 
-  constructor(data, isDuplicate = false) {
+  constructor(data, isDuplicate = false, isMegaNode = false) {
     if (data === undefined) {
       throw Error("Node data required");
     }
@@ -34,6 +39,7 @@ class Node {
 
     this.lvl = this.level; // real level, which used on rendering
     this.isDuplicate = isDuplicate;
+    this.isMegaNode = isMegaNode;
     this.parent = null;
     this.joints = {
       left: null,
@@ -56,6 +62,15 @@ class Node {
       y: this.y + this.constructor.joints[joint].y,
       node
     };
+  }
+
+  unsetJoint(joint) {
+    if (!this.x || !this.y) throw Error("Node.x and Node.y should be defined");
+
+    if (this.constructor.joints[joint] === undefined)
+      throw Error("Wrong name of joint, see Node.joints keys");
+
+    this.joints[joint] = null;
   }
 
   unsetParent() {

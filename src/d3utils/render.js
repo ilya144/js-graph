@@ -1,4 +1,5 @@
 import * as d3 from "d3";
+import { isNull } from "util";
 import types from "./types";
 
 class GraphRender {
@@ -137,20 +138,23 @@ class GraphRender {
         return `translate(${d.x}, ${d.y})`;
       })
       .attr("fill", "none")
-      .attr("width", "220")
+      .attr("width", d => (d.status === 2 && d.level ? "64" : "220"))
       .attr("height", "64")
       .attr("viewBox", "0 0 220 64");
 
     g.append("rect")
-      .attr("x", "7")
+      // .attr("x", "7")
+      .attr("x", d =>
+        d.status === 2 && d.level && isNull(d.joints.left) ? "163" : "7"
+      )
       .attr("y", "1")
-      .attr("width", "218")
+      .attr("width", d => (d.status === 2 && d.level ? "62" : "218"))
       .attr("height", "62")
       .attr("rx", d => (d.status === 2 ? "16" : "32"))
       .attr("stroke", "#5A6487")
       .attr("stroke-width", "2");
 
-    g.filter(d => d.leaf === "false")
+    g.filter(d => !isNull(d.joints.right))
       .append("circle")
       .attr("class", "right")
       .attr("cx", "225")
@@ -160,7 +164,7 @@ class GraphRender {
       .attr("stroke", "#181E2F")
       .attr("stroke-width", "3");
 
-    g.filter(d => d.root === "false")
+    g.filter(d => !isNull(d.joints.left))
       .append("circle")
       .attr("class", "left")
       .attr("cx", "7")
@@ -170,7 +174,8 @@ class GraphRender {
       .attr("stroke", "#181E2F")
       .attr("stroke-width", "3");
 
-    g.append("circle")
+    g.filter(d => !isNull(d.joints.leftUp))
+      .append("circle")
       .attr("cx", "29")
       .attr("cy", "1")
       .attr("r", "5.5")
@@ -178,7 +183,8 @@ class GraphRender {
       .attr("stroke", "#181E2F")
       .attr("stroke-width", "3");
 
-    g.append("circle")
+    g.filter(d => !isNull(d.joints.leftDown))
+      .append("circle")
       .attr("cx", "29")
       .attr("cy", "63")
       .attr("r", "5.5")
@@ -186,7 +192,8 @@ class GraphRender {
       .attr("stroke", "#181E2F")
       .attr("stroke-width", "3");
 
-    g.append("circle")
+    g.filter(d => !isNull(d.joints.rightUp))
+      .append("circle")
       .attr("cx", "203")
       .attr("cy", "1")
       .attr("r", "5.5")
@@ -194,7 +201,8 @@ class GraphRender {
       .attr("stroke", "#181E2F")
       .attr("stroke-width", "3");
 
-    g.append("circle")
+    g.filter(d => !isNull(d.joints.rightDown))
+      .append("circle")
       .attr("cx", "203")
       .attr("cy", "63")
       .attr("r", "5.5")
@@ -204,9 +212,11 @@ class GraphRender {
 
     const container = g
       .append("foreignObject")
-      .attr("x", "7")
+      .attr("x", d =>
+        d.status === 2 && d.level && isNull(d.joints.left) ? "163" : "7"
+      )
       .attr("y", "1")
-      .attr("width", "218")
+      .attr("width", d => (d.status === 2 && d.level ? "62" : "218"))
       .attr("height", "62")
       .append("xhtml:div")
       .style("width", "100%")
@@ -214,18 +224,30 @@ class GraphRender {
       .style("display", "flex")
       .style("flex-direction", "row")
       .style("justify-content", "space-around")
-      .style("align-items", "center");
+      .style("align-items", "center")
+      .style("margin", d => (d.status === 2 && d.level ? "0" : "0 5px"));
+
+    // data.filter(node => node.)
     container
-      .append("xhtml:p")
-      .style("color", "#fff")
-      .style("max-width", "50%")
-      .text(d => `${d.short_name} ${d.inn}`);
-    container
+      .filter(d => types[d.type] !== undefined)
       .append("xhtml:div")
       .style("color", "#fff")
-      .style("max-width", "30%")
-      .html(d => types[d.type]);
-    // .text(d => (d.isDuplicate ? "dupl" : "main"));
+      // .style("max-width", "30%")
+      .style("max-width", d => (d.status === 2 && d.level ? "100%" : "30%"))
+      // .style("margin-left", "10px")
+      .html(d => {
+        if (d.type === 18 || d.type === 7 || d.type === 19)
+          return types[d.type][d.co_code];
+
+        return types[d.type];
+      });
+    container
+      .filter(d => d.status === 1 || d.level === 0)
+      .append("xhtml:p")
+      .style("color", "#fff")
+      // .style("max-width", "55%")
+      .style("white-space", "pre-line")
+      .text(d => `${d.short_name} \n ${d.level === 0 ? "" : d.inn}`);
   }
 
   draw_collapsed(entry, number) {

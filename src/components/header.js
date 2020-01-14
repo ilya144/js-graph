@@ -83,7 +83,8 @@ const Header = props => {
             fontSize: "14px"
           }}
         >
-          Окружение НП по выбранному...
+          {/* Окружение НП по выбранному... */}
+          Общий режим
         </Typography>
         <ArrowDownIcon />
       </Box>

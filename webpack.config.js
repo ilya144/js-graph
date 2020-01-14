@@ -92,7 +92,7 @@ module.exports = {
         use: ["file-loader"]
       },
       {
-        test: /nodeIcons\/[a-z-]+\.svg$/,
+        test: [/nodeIcons\/[a-z-]+\.svg$/, /countries\/[a-z-]+\.svg$/],
         use: require.resolve("raw-loader")
       }
     ]

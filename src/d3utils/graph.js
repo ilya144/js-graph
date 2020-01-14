@@ -1,3 +1,4 @@
+/* eslint-disable no-loop-func */
 /* global window */
 import * as d3 from "d3";
 import { Node, NodeStore, Edge, EdgeStore, GraphRender } from ".";
@@ -11,6 +12,9 @@ class Graph extends GraphRender {
       this.splice(to, 0, this.splice(from, 1)[0]);
       return this;
     };
+    Array.prototype.emptyToZero = function() {
+      return Array.from(this, item => item || 0);
+    };
 
     const root = d3.select(entryRef);
     const main_svg = this.create_svg(root, entryRef);
@@ -18,6 +22,21 @@ class Graph extends GraphRender {
     const entry = outer.append("g");
     const zoom_obj = this.create_zoom([0.8, 2.5], [6400, 4096], () => {
       entry.attr("transform", d3.event.transform);
+
+      const dx = (d3.event.transform.x / d3.event.transform.k / 1920) * 268;
+      const dy = (d3.event.transform.y / d3.event.transform.k / 1080) * 130;
+
+      const mapWidth = parseFloat(entry.node().getBoundingClientRect().width);
+      const mapHeight = parseFloat(entry.node().getBoundingClientRect().height);
+      const factor = mapWidth * 0.008;
+
+      d3.select(".minimap > svg > rect")
+        .attr("width", mapWidth / factor / d3.event.transform.k)
+        .attr("height", mapHeight / factor / d3.event.transform.k)
+        .attr("transform", `translate(${-dx},${-dy})`);
+      outer.node().__zoom = d3.event.transform;
+      d3.select(".minimap svg").node().__zoom = d3.event.transform;
+
       props.setZoom(d3.event.transform.k);
     });
     window.onresize = this.create_resize_callback(main_svg, entryRef);
@@ -40,14 +59,39 @@ class Graph extends GraphRender {
         const zoomState = d3.zoomIdentity;
         zoomState.k = k;
         outer.call(zoom_obj.transform, zoomState);
+        outer.node().__zoom = zoomState;
+        d3.select(".minimap svg").node().__zoom = zoomState;
       },
       callResize: this.create_resize_callback(main_svg, entryRef)
     });
+    d3.select(".minimap")
+      .append("svg")
+      .attr("width", "248")
+      .attr("height", "130");
+
+    document
+      .querySelector(".minimap svg")
+      .appendChild(entry.node().cloneNode(true));
+    // const minimap = d3.select
+    d3.select(".minimap svg g foreignObject").remove();
+    console.log(d3.select(".minimap svg g").attr("transform", "scale(0.15)"));
+    const zoom_obj_minimap = this.create_zoom([0.8, 2.5], [6400, 4096], () => {
+      entry.attr("transform", d3.event.transform);
+      props.setZoom(d3.event.transform.k);
+    });
+    d3.select(".minimap")
+      .select("svg")
+      .append("rect")
+      .attr("width", "40")
+      .attr("height", "40")
+      .attr("fill", "white")
+      .style("border", "2px solid red")
+      .attr("fill-opacity", "0.05");
+    outer.call(zoom_obj.transform, d3.zoomIdentity);
+    d3.select(".minimap svg").call(zoom_obj);
   }
 
   main(entry, data, props) {
-    this.draw_background(entry, Array(6), props.isVertical);
-
     this.nodes = new NodeStore(data.nodes.map(node => new Node(node)));
     this.edges = new EdgeStore(data.edges.map(edge => new Edge(edge)));
 
@@ -59,14 +103,12 @@ class Graph extends GraphRender {
     this.sortByLvlIndex();
     this.define_coords();
 
-    // this.draw_nodes_by_lvl_index(entry, this.nodes.getAll());
-    this.draw_nodes_by_coords(entry, this.nodes.getAll());
-    // this.draw_edges_old(entry, this.nodes.getAll());
-    // this.draw_edges_by_parents(entry);
-
-    console.log(this.nodes);
+    this.draw_background(entry, Array(6), props.isVertical);
     this.define_joints();
+
+    this.draw_nodes_by_coords(entry, this.nodes.getAll());
     this.draw_edges_by_joints(entry, this.make_paths());
+    console.log(this.nodes, this.edges);
   }
 
   create_svg(root, entryRef) {
@@ -133,6 +175,12 @@ class Graph extends GraphRender {
       if (node.edges_in !== "") {
         node.parent = this.nodes.getNode(this.edges.getEdge(node.edges_in).sid);
       }
+      if (node.edges_in === "" && !node.isDuplicate) {
+        node.parent = this.nodes.getNode(
+          this.edges.getEdgeByChild(node.pk) &&
+            this.edges.getEdgeByChild(node.pk).sid
+        );
+      }
       return node;
     });
 
@@ -161,13 +209,13 @@ class Graph extends GraphRender {
         return node;
       });
 
-    // fix technical nodes of parent-leaf
+    // fix technical nodes of parent-leaf if node.type == 07 or 19
     nodes
       .filter(node => node.status === 2)
       .map(node => {
         const edge = this.edges.getEdgeByChild(node.pk);
         const parent = this.nodes.getNode(edge && edge.sid);
-        if (parent && parent.leaf) {
+        if (parent && parent.leaf && (node.type === 7 || node.type === 19)) {
           node.lvl = parent.lvl;
         }
         return node;
@@ -286,7 +334,28 @@ class Graph extends GraphRender {
           .reduce(...this.getCoordReducer())
           .average();
 
-        // todo checks
+        if (index === 0) {
+          if (isNaN(node.y)) node.y = 86 + node.lvlIndex * 80;
+        } else {
+          if (isNaN(node.y)) node.y = 86 + node.lvlIndex * 80;
+
+          const diff = node.y - array[index - 1].y;
+          if (diff < 80) node.y += 80 - diff;
+        }
+
+        return [node.x, node.y];
+      });
+  }
+
+  // special for right-side moving
+  set_nodes_coords_right(nodes, i) {
+    nodes
+      .filter(node => node.lvl === i)
+      .sort(this.sortByField("lvlIndex"))
+      .map((node, index, array) => {
+        node.x = 320 * (node.lvl - 1) + 50;
+        node.y = node.parent && node.parent.y;
+
         if (index === 0) {
           if (isNaN(node.y)) node.y = 86 + node.lvlIndex * 80;
         } else {
@@ -324,7 +393,8 @@ class Graph extends GraphRender {
     } else {
       // to right
       for (let i = main_lvl + 1; i <= last_lvl; i++) {
-        this.set_nodes_coords(nodes, i);
+        this.set_nodes_coords_right(nodes, i);
+        console.log("777");
       }
       // to left
       for (let i = main_lvl - 1; i >= 1; i--) {
@@ -364,13 +434,15 @@ class Graph extends GraphRender {
             this.edges.getEdgeByChild(node.pk).sid
         );
 
-        if (topParent) {
+        if (topParent /*  && topParent.lvl === node.lvl */) {
           node.setJoint("rightUp", topParent);
           topParent.setJoint("rightDown", node);
         }
 
         return node;
       });
+    root.unsetJoint("right");
+    rootChild.unsetJoint("left");
   }
 
   make_paths() {
@@ -383,10 +455,10 @@ class Graph extends GraphRender {
     // left upside-down
     const root = nodes.find(node => node.level === 0);
     paths.push({
-      source: { x: root.joints["leftDown"].x, y: root.joints["leftDown"].y },
+      source: { x: root.joints.leftDown.x, y: root.joints.leftDown.y },
       target: {
-        x: root.joints["leftDown"].node.joints["leftUp"].x,
-        y: root.joints["leftDown"].node.joints["leftUp"].y
+        x: root.joints.leftDown.node.joints.leftUp.x,
+        y: root.joints.leftDown.node.joints.leftUp.y
       },
       type: "vertical" // TODO CHANGE TYPE
     });
@@ -397,12 +469,12 @@ class Graph extends GraphRender {
       .map(node => {
         paths.push({
           source: {
-            x: node.parent.joints["right"].x,
-            y: node.parent.joints["right"].y
+            x: node.parent.joints.right.x,
+            y: node.parent.joints.right.y
           },
           target: {
-            x: node.joints["left"].x,
-            y: node.joints["left"].y
+            x: node.joints.left.x,
+            y: node.joints.left.y
           },
           type: "horizontal" // TODO CHANGE TYPE
         });
@@ -420,12 +492,12 @@ class Graph extends GraphRender {
         if (topParent) {
           paths.push({
             source: {
-              x: topParent.joints["rightDown"].x,
-              y: topParent.joints["rightDown"].y
+              x: topParent.joints.rightDown.x,
+              y: topParent.joints.rightDown.y
             },
             target: {
-              x: node.joints["rightUp"].x,
-              y: node.joints["rightUp"].y
+              x: node.joints.rightUp.x,
+              y: node.joints.rightUp.y
             },
             type: "vertical" // TODO CHANGE TYPE
           });
@@ -434,6 +506,58 @@ class Graph extends GraphRender {
         return node;
       });
     return paths;
+  }
+
+  make_mega_nodes(highlitedNode) {
+    if (this.nodes === undefined || this.edges === undefined)
+      throw Error("define stores first");
+
+    if (!(highlitedNode instanceof Node))
+      throw Error("Argument highlitedNode must be instance of Node class");
+
+    const nodes = this.nodes.getAll();
+    const last_lvl = this.getLastLvl(nodes);
+    for (let i = last_lvl; i > 1; i--) {
+      nodes.filter(node => node.lvl === i).map();
+    }
+    // TODO make good stuff
+    // if (this.getLastLvl(nodes) === highlitedNode.lvl) {
+    //   for (let i = highlitedNode.lvl - 1; i >= 1; i--) {
+    //     nodes
+    //       .filter(node => node.lvl === i)
+    //       .reduce(
+    //         (obj, node) => {
+    //           if (node === highlitedNode.parent) {
+    //             obj.parent = node;
+    //             return obj;
+    //           }
+    //           if (isNull(obj.megaNode)) {
+    //             obj.megaNode = new Node(
+    //               {
+    //                 listNodes: [],
+    //                 appendNode(node) {
+    //                   this.listNodes.push(node);
+    //                   return this;
+    //                 }
+    //               },
+    //               false,
+    //               true
+    //             );
+    //           }
+    //         },
+    //         { parent: null, megaNode: null }
+    //       );
+    //   }
+    // } else {
+    //   // to right
+    //   for (let i = main_lvl + 1; i <= last_lvl; i++) {
+    //     this.set_nodes_coords(nodes, i);
+    //   }
+    //   // to left
+    //   for (let i = main_lvl - 1; i >= 1; i--) {
+    //     this.set_nodes_coords(nodes, i);
+    //   }
+    // }
   }
 
   getLastLvl(nodes) {
@@ -458,7 +582,12 @@ class Graph extends GraphRender {
 
         return acc;
       }, [])
-      .reduce((max, value, index) => (value > max ? index : max), 0);
+      .emptyToZero()
+      .reduce(
+        (max_index, value, index, array) =>
+          value > array[max_index] ? index : max_index,
+        0
+      );
   }
 
   sortByField(str) {

@@ -135,7 +135,10 @@ class GraphRender {
       .join("g")
       .attr("id", d => d.pk)
       .attr("transform", d => {
-        return `translate(${d.x}, ${d.y})`;
+        const x = d.x;
+        const y = d.y;
+
+        return `translate(${x}, ${y})`;
       })
       .attr("fill", "none")
       .attr("width", d => (d.status === 2 && d.level ? "64" : "220"))
@@ -151,6 +154,7 @@ class GraphRender {
       .attr("width", d => (d.status === 2 && d.level ? "62" : "218"))
       .attr("height", "62")
       .attr("rx", d => (d.status === 2 ? "16" : "32"))
+
       .attr("stroke", "#5A6487")
       .attr("stroke-width", "2");
 
@@ -218,6 +222,8 @@ class GraphRender {
       .attr("y", "1")
       .attr("width", d => (d.status === 2 && d.level ? "62" : "218"))
       .attr("height", "62")
+      .style("border-radius", d => (d.status === 2 ? "16px" : "32px"))
+      .style("box-shadow", d => (d.isHighlighted ? "0px 0px 18px #91A4F3" : ""))
       .append("xhtml:div")
       .style("width", "100%")
       .style("height", "100%")
@@ -225,9 +231,72 @@ class GraphRender {
       .style("flex-direction", "row")
       .style("justify-content", "space-around")
       .style("align-items", "center")
+      .style("user-select", "none")
       .style("margin", d => (d.status === 2 && d.level ? "0" : "0 5px"));
 
-    // data.filter(node => node.)
+    const balance_box = container
+      .filter(d => d.lvl > 1 && d.status === 1)
+      .append("xhtml:div")
+      .attr(
+        "style",
+        `
+          display: flex;
+          flex-direction: column;
+          width: 34px;
+          height: 35px;
+          align-items: center;
+          justify-content: space-between;
+        `
+      );
+    const balance_svg = balance_box
+      .append("svg")
+      .attr("width", "16")
+      .attr("height", "16");
+
+    balance_svg
+      .append("path")
+      .attr("fill", "#859DE0")
+      .attr(
+        "d",
+        "M8.2222 8.37621L7.54199 8.76984V15.8459L13.667 12.3094V5.2334L8.2222 8.37621Z"
+      );
+    balance_svg
+      .append("path")
+      .attr("fill", "#859DE0")
+      .attr(
+        "d",
+        "M9.33029 2.03056L6.97475 0.666992L0.679688 4.30106L3.03837 5.66462L9.33029 2.03056Z"
+      );
+    balance_svg
+      .append("path")
+      .attr("fill", "#859DE0")
+      .attr(
+        "d",
+        "M13.2672 4.30109L10.5527 2.75488L4.26074 6.38895L4.61974 6.57475L6.97527 7.93516L9.31821 6.5842L13.2672 4.30109Z"
+      );
+    balance_svg
+      .append("path")
+      .attr("fill", "#859DE0")
+      .attr(
+        "d",
+        "M3.78492 8.9896L2.65754 8.41017V6.60888L0.333496 5.27051V12.2962L6.41442 15.8074V8.78176L3.78492 7.26704V8.9896Z"
+      );
+
+    balance_box
+      .append("xhtml:p")
+      .attr(
+        "style",
+        `
+          font-family: Fira Sans;
+          font-style: normal;
+          font-weight: bold;
+          font-size: 14px;
+          line-height: 18px;
+          color: #fff
+        `
+      )
+      .text(d => d.balance);
+
     container
       .filter(d => types[d.type] !== undefined)
       .append("xhtml:div")
@@ -244,13 +313,22 @@ class GraphRender {
     container
       .filter(d => d.status === 1 || d.level === 0)
       .append("xhtml:p")
+      .attr(
+        "style",
+        `
+          font-family: Fira Sans;
+          font-style: normal;
+          font-weight: normal;
+          font-size: 14px;
+          line-height: 18px;
+        `
+      )
       .style("color", "#fff")
-      // .style("max-width", "55%")
       .style("white-space", "pre-line")
       .text(d => `${d.short_name} \n ${d.level === 0 ? "" : d.inn}`);
   }
 
-  draw_collapsed(entry, number) {
+  draw_collapsed(entry /* number */) {
     const g = entry
       .append("g")
       .style("background", "#171e2f")
@@ -315,7 +393,7 @@ class GraphRender {
         const c = d3.path();
         const x1 = 320 * (d.lvl - 1) + 50;
         const y1 = 86 + d.lvlIndex * 80;
-        const p = this.nodes.getNode(this.edges.getEdgeByChild(d.pk).bid);
+        // const p = this.nodes.getNode(this.edges.getEdgeByChild(d.pk).bid);
         const x2 = 320 * (d.parent.lvl - 1) + 50;
         const y2 = 86 + d.parent.lvlIndex * 80;
 
@@ -397,6 +475,32 @@ class GraphRender {
 
         return c;
       });
+    links
+      .append("foreignObject")
+      .attr("x", d =>
+        d.type === "vertical" ? d.source.x + 8 : d.source.x + 32
+      )
+      .attr("y", d =>
+        d.type === "vertical"
+          ? (d.target.y + d.source.y) / 2 - 9
+          : d.target.y - 20
+      )
+      .attr("width", "100")
+      .attr("height", "18")
+      .append("xhtml:p")
+      .attr(
+        "style",
+        `
+          font-family: Fira Sans;
+          font-style: normal;
+          font-weight: bold;
+          font-size: 14px;
+          line-height: 18px;
+          text-align: left;
+        `
+      )
+      .style("color", "#859DE0")
+      .text(d => `↓ ${d.edge.quantity}`);
   }
 }
 

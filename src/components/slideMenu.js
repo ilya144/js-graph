@@ -39,7 +39,7 @@ const SlideMenu = props => {
             position: "absolute",
             // top: "18px",
             // left: open ? "120px" : "0px",
-            top: "80px",
+            top: "72px",
             left: open ? "284px" : "18px",
             width: "20px",
             height: "40px",
@@ -77,7 +77,11 @@ const SlideMenu = props => {
                 top: "24px",
                 left: "24px",
                 color: "#859DE0",
-                textAlign: "left"
+                textAlign: "left",
+                fontFamily: "Fira Sans",
+                fontWeight: "bold",
+                fontSize: "14px",
+                lineHeight: "18px"
               }}
             >
               Наименование товара:
@@ -89,6 +93,7 @@ const SlideMenu = props => {
                 left: "24px",
                 color: "#fff",
                 textAlign: "left",
+                fontFamily: "Fira Sans",
                 fontWeight: "500",
                 fontSize: "20px",
                 lineHeight: "28px",
@@ -107,7 +112,7 @@ const SlideMenu = props => {
               height: "22px",
               width: "84px",
               left: "-16px",
-              // fontFamily: "Fira Code",
+              fontFamily: "Fira Code",
               fontStyle: "normal",
               fontWeight: "500",
               fontSize: "15px", // initial 14px
@@ -117,7 +122,13 @@ const SlideMenu = props => {
               color: "#5872DA",
               transform: "rotate(-90deg)"
             }}
-            onClick={() => setopen(true)}
+            onClick={() => {
+              if (typeof props.useCallback.callResize === "function") {
+                // TODO сделать более плавный и надежный способ ресайза
+                setTimeout(props.useCallback.callResize, 100);
+                setopen(true);
+              }
+            }}
           >
             Развернуть
           </Typography>
@@ -132,14 +143,18 @@ const SlideMenu = props => {
             height="100%"
             padding="10px 0px"
           >
-            <Grid container>
+            <Grid container alignItems="center">
               <Typography
                 component="span"
                 style={{
                   color: "#FFFFFF",
                   opacity: "0.6",
                   textAlign: "left",
-                  marginLeft: "24px"
+                  marginLeft: "24px",
+                  fontFamily: "Fira Sans",
+                  fontWeight: "normal",
+                  fontSize: "14px",
+                  lineHeight: "18px"
                 }}
               >
                 РНПТ:
@@ -148,20 +163,28 @@ const SlideMenu = props => {
                 component="span"
                 style={{
                   color: "#FFFFFF",
-                  marginLeft: "4px"
+                  marginLeft: "4px",
+                  fontFamily: "Fira Code",
+                  fontWeight: "500",
+                  fontSize: "14px",
+                  lineHeight: "22px"
                 }}
               >
                 {jsonData.data.detail.ipt}
               </Typography>
             </Grid>
-            <Grid container>
+            <Grid container alignItems="center">
               <Typography
                 component="span"
                 style={{
                   color: "#FFFFFF",
                   opacity: "0.6",
                   textAlign: "left",
-                  marginLeft: "24px"
+                  marginLeft: "24px",
+                  fontFamily: "Fira Sans",
+                  fontWeight: "normal",
+                  fontSize: "14px",
+                  lineHeight: "18px"
                 }}
               >
                 ИНН:
@@ -170,7 +193,11 @@ const SlideMenu = props => {
                 component="span"
                 style={{
                   color: "#FFFFFF",
-                  marginLeft: "4px"
+                  marginLeft: "4px",
+                  fontFamily: "Fira Code",
+                  fontWeight: "500",
+                  fontSize: "14px",
+                  lineHeight: "22px"
                 }}
               >
                 {jsonData.data.detail.fr_inn}
@@ -192,10 +219,28 @@ const SlideMenu = props => {
               direction="column"
               style={{ marginTop: "24px", marginLeft: "24px" }}
             >
-              <Typography style={{ color: "#859DE0", textAlign: "left" }}>
+              <Typography
+                style={{
+                  color: "#859DE0",
+                  textAlign: "left",
+                  fontFamily: "Fira Sans",
+                  fontWeight: "normal",
+                  fontSize: "14px",
+                  lineHeight: "18px"
+                }}
+              >
                 Выпущено по ДТ:
               </Typography>
-              <Typography style={{ color: "#fff", textAlign: "left" }}>
+              <Typography
+                style={{
+                  color: "#fff",
+                  textAlign: "left",
+                  fontFamily: "Fira Code",
+                  fontWeight: "500",
+                  fontSize: "14px",
+                  lineHeight: "22px"
+                }}
+              >
                 {`${jsonData.data.detail.imp_cnt} ${jsonData.data.detail.unit_name}`}
               </Typography>
             </Grid>
@@ -205,10 +250,28 @@ const SlideMenu = props => {
               direction="column"
               style={{ marginTop: "24px", marginLeft: "24px" }}
             >
-              <Typography style={{ color: "#859DE0", textAlign: "left" }}>
+              <Typography
+                style={{
+                  color: "#859DE0",
+                  textAlign: "left",
+                  fontFamily: "Fira Sans",
+                  fontWeight: "normal",
+                  fontSize: "14px",
+                  lineHeight: "18px"
+                }}
+              >
                 Минимальная цена:
               </Typography>
-              <Typography style={{ color: "#fff", textAlign: "left" }}>
+              <Typography
+                style={{
+                  color: "#fff",
+                  textAlign: "left",
+                  fontFamily: "Fira Code",
+                  fontWeight: "500",
+                  fontSize: "14px",
+                  lineHeight: "22px"
+                }}
+              >
                 {`${jsonData.data.detail.price_min} ₽`}
               </Typography>
             </Grid>
@@ -218,10 +281,28 @@ const SlideMenu = props => {
               direction="column"
               style={{ marginTop: "24px", marginLeft: "24px" }}
             >
-              <Typography style={{ color: "#859DE0", textAlign: "left" }}>
+              <Typography
+                style={{
+                  color: "#859DE0",
+                  textAlign: "left",
+                  fontFamily: "Fira Sans",
+                  fontWeight: "normal",
+                  fontSize: "14px",
+                  lineHeight: "18px"
+                }}
+              >
                 Максимальная цена:
               </Typography>
-              <Typography style={{ color: "#fff", textAlign: "left" }}>
+              <Typography
+                style={{
+                  color: "#fff",
+                  textAlign: "left",
+                  fontFamily: "Fira Code",
+                  fontWeight: "500",
+                  fontSize: "14px",
+                  lineHeight: "22px"
+                }}
+              >
                 {`${jsonData.data.detail.price_max} ₽`}
               </Typography>
             </Grid>

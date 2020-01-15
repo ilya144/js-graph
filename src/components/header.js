@@ -80,7 +80,11 @@ const Header = props => {
           style={{
             color: "#fff",
             marginRight: "10px",
-            fontSize: "14px"
+            fontFamily: "Fira Sans",
+            fontStyle: "normal",
+            fontWeight: "normal",
+            fontSize: "14px",
+            lineHeight: "18px",
           }}
         >
           {/* Окружение НП по выбранному... */}

@@ -1,5 +1,3 @@
-import { isNull } from "util";
-
 class Node {
   /**
    * Класс узла
@@ -12,9 +10,10 @@ class Node {
    * isDulicate: true - узел является дупликатом
    *
    * if isMegaNode: data = {
-   *                        countNodes: Number,
-   *                        leafNodes: Number,
-   *                        nodeList: Array<Node>
+   *                        nodeList: Array<Node>,
+   *                        countNodes(),
+   *                        countLeaf(),
+   *                        appendNode()
    *                       }
    */
 
@@ -40,7 +39,9 @@ class Node {
     this.lvl = this.level; // real level, which used on rendering
     this.isDuplicate = isDuplicate;
     this.isMegaNode = isMegaNode;
-    this.parent = null;
+    if (!isMegaNode) this.parent = null;
+    this.isHighlighted = false;
+
     this.joints = {
       left: null,
       leftUp: null,
@@ -49,6 +50,16 @@ class Node {
       rightDown: null,
       right: null
     };
+  }
+
+  setHighlighted() {
+    this.isHighlighted = true;
+    return this;
+  }
+
+  unsetHighlighted() {
+    this.isHighlighted = false;
+    return this;
   }
 
   setJoint(joint, node) {

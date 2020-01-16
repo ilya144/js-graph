@@ -39,6 +39,7 @@ const App = () => {
   const [showLegend, setShowLegend] = useState(false);
   const toggleLegend = () => setShowLegend(!showLegend);
   const [isVertical, setVertical] = useState(false);
+  const [headerText, setHeaderText] = useState("Общий режим");
 
   return (
     <Container className={classes.app}>
@@ -49,6 +50,7 @@ const App = () => {
         toggleLegend={toggleLegend}
         isVertical={isVertical}
         setVertical={setVertical}
+        headerText={headerText}
       />
 
       {showLegend ? (
@@ -63,6 +65,7 @@ const App = () => {
             useCallback={useCallback}
             setCallback={setCallback}
             isVertical={isVertical}
+            setHeaderText={setHeaderText}
           />
           <SideBar useCallback={useCallback} showLegend={toggleLegend} />
           <Minimap zoom={zoom} setZoom={setZoom} useCallback={useCallback} />

@@ -67,7 +67,9 @@ const Header = props => {
         alignItems="center"
         width="220px"
       >
-        <BurgerIcon />
+        <BurgerIcon
+          onClick={() => props.useCallback && props.useCallback.callMain()}
+        />
         <QuestionSmallIcon
           isDark={props.showLegend}
           onClick={props.toggleLegend}
@@ -84,11 +86,12 @@ const Header = props => {
             fontStyle: "normal",
             fontWeight: "normal",
             fontSize: "14px",
-            lineHeight: "18px",
+            lineHeight: "18px"
           }}
         >
           {/* Окружение НП по выбранному... */}
-          Общий режим
+          {/* Общий режим */}
+          {props.headerText}
         </Typography>
         <ArrowDownIcon />
       </Box>

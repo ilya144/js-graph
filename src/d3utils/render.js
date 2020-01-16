@@ -3,6 +3,28 @@ import { isNull } from "util";
 import types from "./types";
 
 class GraphRender {
+  constructor() {
+    Array.prototype.equals = function(array) {
+      // if the other array is a falsy value, return
+      if (!array) return false;
+
+      // compare lengths - can save a lot of time
+      if (this.length !== array.length) return false;
+
+      for (let i = 0, l = this.length; i < l; i++) {
+        // Check if we have nested arrays
+        if (this[i] instanceof Array && array[i] instanceof Array) {
+          // recurse into the nested arrays
+          if (!this[i].equals(array[i])) return false;
+        } else if (this[i] !== array[i]) {
+          // Warning - two different object instances will never be equal: {x:20} != {x:20}
+          return false;
+        }
+      }
+      return true;
+    };
+  }
+
   draw_background(entry, data, isVertical = false) {
     entry
       .append("foreignObject")
@@ -126,12 +148,12 @@ class GraphRender {
       .text(d => (d.isDuplicate ? "dupl" : "main"));
   }
 
-  draw_nodes_by_coords(entry, data) {
+  draw_nodes_by_coords(entry, data, draw_highlighted) {
     const g = entry
       .append("g")
       .attr("class", "nodes")
       .selectAll("empty")
-      .data(data)
+      .data(data.filter(node => !node.isMegaNode))
       .join("g")
       .attr("id", d => d.pk)
       .attr("transform", d => {
@@ -143,7 +165,10 @@ class GraphRender {
       .attr("fill", "none")
       .attr("width", d => (d.status === 2 && d.level ? "64" : "220"))
       .attr("height", "64")
-      .attr("viewBox", "0 0 220 64");
+      .attr("viewBox", "0 0 220 64")
+      .on("click", function(d) {
+        draw_highlighted(d.lvl, d.lvlIndex);
+      });
 
     g.append("rect")
       // .attr("x", "7")
@@ -328,12 +353,22 @@ class GraphRender {
       .text(d => `${d.short_name} \n ${d.level === 0 ? "" : d.inn}`);
   }
 
-  draw_collapsed(entry /* number */) {
+  draw_collapsed(entry, data) {
     const g = entry
       .append("g")
+      .attr("class", "meganodes")
+      .selectAll("empty")
+      .data(data.filter(node => node.isMegaNode))
+      .join("g")
       .style("background", "#171e2f")
       .attr("width", "112")
       .attr("height", "56")
+      .attr("transform", d => {
+        const x = d.x;
+        const y = d.y;
+
+        return `translate(${x}, ${y})`;
+      })
       .attr("fill", "none");
 
     g.data([
@@ -453,8 +488,29 @@ class GraphRender {
         if (d.type === "horizontal") {
           const s = d.source;
           const t = d.target;
+          const siblings = paths.filter(
+            path => path.source.x === d.source.x && path.source.y === d.source.y
+          );
+
           c.moveTo(s.x + 5, s.y);
-          c.lineTo(s.x + 20, s.y);
+          if (
+            siblings
+              .filter(path => path.target.y > d.source.y)
+              .equals(siblings) ||
+            siblings.filter(path => path.target.y < d.source.y).equals(siblings)
+          ) {
+            const sign = t.y > s.y ? 1 : -1;
+            c.bezierCurveTo(
+              s.x + 5,
+              s.y,
+              s.x + 20,
+              s.y,
+              s.x + 20,
+              s.y + 15 * sign
+            );
+          } else {
+            c.lineTo(s.x + 20, s.y);
+          }
 
           if (s.y !== t.y) {
             const sign = t.y < s.y ? 1 : -1;

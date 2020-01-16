@@ -23,6 +23,13 @@ class NodeStore {
   getAll() {
     return this.nodeList;
   }
+
+  removeNode(nodeToRemove) {
+    this.nodeList.pop(this.nodeList.findIndex(node => node === nodeToRemove));
+    this.nodeMap = this.nodeList
+      .filter(node => !node.isDuplicate)
+      .reduce((state, node) => Object.assign(state, { [node.pk]: node }), {});
+  }
 }
 
 export default NodeStore;

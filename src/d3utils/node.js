@@ -2,28 +2,23 @@ class Node {
   /**
    * Класс узла
    *
-   * x, y: координаты узла
-   * joints: точки соединения узла
-   * balance: остаток на узле
-   * isRoot: true - входящие узлы отсутствуют
-   * isLeaf: true - исходящие узлы отсутствуют
-   * isDulicate: true - узел является дупликатом
+   * @property {object} joints Точки соединения узла
    *
-   * if isMegaNode: data = {
-   *                        nodeList: Array<Node>,
-   *                        countNodes(),
-   *                        countLeaf(),
-   *                        appendNode()
-   *                       }
+   ** if isMegaNode: data = {
+   **                         nodeList: Array<Node>,
+   **                         countNodes(),
+   **                         countLeaf(),
+   **                         appendNode()
+   **                       }
    */
 
   static joints = {
-    left: { x: 7, y: 32, node: Node },
-    leftUp: { x: 29, y: 1, node: Node },
-    leftDown: { x: 29, y: 63, node: Node },
-    rightUp: { x: 203, y: 1, node: Node },
-    rightDown: { x: 203, y: 63, node: Node },
-    right: { x: 225, y: 32, node: Node }
+    left: { x: 7, y: 32 },
+    leftUp: { x: 29, y: 1 },
+    leftDown: { x: 29, y: 63 },
+    rightUp: { x: 203, y: 1 },
+    rightDown: { x: 203, y: 63 },
+    right: { x: 225, y: 32 }
   };
 
   constructor(data, isDuplicate = false, isMegaNode = false) {
@@ -37,9 +32,10 @@ class Node {
     });
 
     this.lvl = this.level; // real level, which used on rendering
+    this.parent = null; // left it for backward compatibility
+    this.parents = [];
     this.isDuplicate = isDuplicate;
     this.isMegaNode = isMegaNode;
-    if (!isMegaNode) this.parent = null;
     this.isHighlighted = false;
 
     this.joints = {
@@ -62,15 +58,25 @@ class Node {
     return this;
   }
 
-  setJoint(joint, node) {
+  /**
+   * Method for init joint by data
+   * @param {string} jointName
+   * @param {Array | Node} node
+   */
+  setJoint(jointName, node) {
     if (!this.x || !this.y) throw Error("Node.x and Node.y should be defined");
 
-    if (this.constructor.joints[joint] === undefined)
+    if (Node.joints[jointName] === undefined)
       throw Error("Wrong name of joint, see Node.joints keys");
 
-    this.joints[joint] = {
-      x: this.x + this.constructor.joints[joint].x,
-      y: this.y + this.constructor.joints[joint].y,
+    if (node instanceof Array && !(node[0] instanceof Node))
+      throw Error(
+        "Argument node should be ref to another node or array of nodes"
+      );
+
+    this.joints[jointName] = {
+      x: this.x + Node.joints[jointName].x,
+      y: this.y + Node.joints[jointName].y,
       node
     };
   }
@@ -78,7 +84,7 @@ class Node {
   unsetJoint(joint) {
     if (!this.x || !this.y) throw Error("Node.x and Node.y should be defined");
 
-    if (this.constructor.joints[joint] === undefined)
+    if (Node.joints[joint] === undefined)
       throw Error("Wrong name of joint, see Node.joints keys");
 
     this.joints[joint] = null;
@@ -86,6 +92,26 @@ class Node {
 
   unsetParent() {
     this.parent = null;
+    return this;
+  }
+
+  addParent(node) {
+    if (!(node instanceof Node)) throw Error("Argument node instance of Node");
+    this.parents.push(node);
+    return this;
+  }
+
+  removeParent(node) {
+    const index = this.parents.findIndex(parent => parent === node);
+    this.parents = [
+      ...this.parents.slice(0, index),
+      ...this.parents.slice(index + 1)
+    ];
+    return this;
+  }
+
+  flushParents() {
+    this.parents = [];
     return this;
   }
 }

@@ -1,13 +1,12 @@
-/* eslint-disable no-loop-func */
 /* global window */
 import * as d3 from "d3";
+import { isNullOrUndefined } from "util";
 import { Node, NodeStore, Edge, EdgeStore, GraphRender } from ".";
 
 class Graph extends GraphRender {
   constructor(entryRef, props, data) {
     super();
 
-    // SUPER PUPER MOVE FUNCTION
     Array.prototype.move = function(from, to) {
       this.splice(to, 0, this.splice(from, 1)[0]);
       return this;
@@ -62,7 +61,8 @@ class Graph extends GraphRender {
         outer.node().__zoom = zoomState;
         d3.select(".minimap svg").node().__zoom = zoomState;
       },
-      callResize: this.create_resize_callback(main_svg, entryRef)
+      callResize: this.create_resize_callback(main_svg, entryRef),
+      callMain: () => this.main(entry, data, props)
     });
     d3.select(".minimap")
       .append("svg")
@@ -72,13 +72,14 @@ class Graph extends GraphRender {
     document
       .querySelector(".minimap svg")
       .appendChild(entry.node().cloneNode(true));
-    // const minimap = d3.select
+
+    // Убираю нумерованную подложку
     d3.select(".minimap svg g foreignObject").remove();
-    console.log(d3.select(".minimap svg g").attr("transform", "scale(0.15)"));
-    const zoom_obj_minimap = this.create_zoom([0.8, 2.5], [6400, 4096], () => {
-      entry.attr("transform", d3.event.transform);
-      props.setZoom(d3.event.transform.k);
-    });
+
+    // Уменьшаем пропорционально
+    d3.select(".minimap svg g").attr("transform", "scale(0.15)");
+
+    // Создаем квадрат позиционирования
     d3.select(".minimap")
       .select("svg")
       .append("rect")
@@ -87,26 +88,55 @@ class Graph extends GraphRender {
       .attr("fill", "white")
       .style("border", "2px solid red")
       .attr("fill-opacity", "0.05");
+
+    // Подключаем обработчик изменений масштаба и положения
     outer.call(zoom_obj.transform, d3.zoomIdentity);
     d3.select(".minimap svg").call(zoom_obj);
   }
 
   main(entry, data, props) {
+    entry.selectAll("*").remove();
+    props.setHeaderText("Общий режим");
     this.nodes = new NodeStore(data.nodes.map(node => new Node(node)));
     this.edges = new EdgeStore(data.edges.map(edge => new Edge(edge)));
 
     this.nodes = new NodeStore(this.create_duplicates());
-    this.nodes = new NodeStore(this.add_parents());
+
+    this.add_parents();
     this.fix_levels();
     this.set_lvl_indexes();
 
     this.sortByLvlIndex();
+
+    //* Переместил Анонс
+    // this.swapNodes(
+    //   ...this.nodes
+    //     .getAll()
+    //     .filter(node => node.lvl === 3 && [3, 4].includes(node.lvlIndex))
+    // );
+
     this.define_coords();
+    this.define_joints();
+    this.all_nodes = this.nodes.getAll();
+
+    //* Здесь я могу переделать граф под режим выделенного узла
+    const draw_highlighted = (lvl, index) => {
+      d3.select("g.nodes").remove();
+      d3.select("g.edges").remove();
+      this.make_mega_nodes(
+        this.all_nodes.find(node => node.lvl === lvl && node.lvlIndex === index)
+      );
+      // this.set_lvl_indexes();
+      // this.sortByLvlIndex();
+      // this.define_coords();
+      // this.define_joints();
+      this.draw_nodes_by_coords(entry, this.nodes.getAll());
+      this.draw_edges_by_joints(entry, this.make_paths());
+      props.setHeaderText("Окружение НП по выбранному...");
+    };
 
     this.draw_background(entry, Array(6), props.isVertical);
-    this.define_joints();
-
-    this.draw_nodes_by_coords(entry, this.nodes.getAll());
+    this.draw_nodes_by_coords(entry, this.nodes.getAll(), draw_highlighted);
     this.draw_edges_by_joints(entry, this.make_paths());
     console.log(this.nodes, this.edges);
   }
@@ -137,19 +167,20 @@ class Graph extends GraphRender {
       .on("zoom", callback);
   }
 
+  // Создаю каждому узлу с несколькими родителями по дубликату на родителя
   create_duplicates() {
     if (this.nodes === undefined || this.edges === undefined)
       throw Error("define stores first");
 
     const nodes = this.nodes.getAll().flatMap(node => {
-      const edges_in = node.edges_in
+      const edges_in_list = node.edges_in
         .replace(/'/g, "")
         .replace("[", "")
         .replace("]", "")
         .split(",");
 
-      if (edges_in.length > 1) {
-        return edges_in.map((edge, index) => {
+      if (edges_in_list.length > 1) {
+        return edges_in_list.map((edge, index) => {
           const new_node = { ...node };
           const isDuplicate = !!index;
 
@@ -394,13 +425,13 @@ class Graph extends GraphRender {
       // to right
       for (let i = main_lvl + 1; i <= last_lvl; i++) {
         this.set_nodes_coords_right(nodes, i);
-        console.log("777");
       }
       // to left
       for (let i = main_lvl - 1; i >= 1; i--) {
         this.set_nodes_coords(nodes, i);
       }
     }
+    nodes.find(node => node.level === 0).y = 86;
   }
 
   define_joints() {
@@ -420,7 +451,7 @@ class Graph extends GraphRender {
 
     // define joints root - second node below him
     const root = nodes.find(node => node.level === 0);
-    const rootChild = nodes.find(node => node.parent === root).unsetParent();
+    const rootChild = nodes.find(node => node.parent === root);
 
     root.setJoint("leftDown", rootChild);
     rootChild.setJoint("leftUp", root);
@@ -454,18 +485,20 @@ class Graph extends GraphRender {
 
     // left upside-down
     const root = nodes.find(node => node.level === 0);
+    const _this = this;
     paths.push({
       source: { x: root.joints.leftDown.x, y: root.joints.leftDown.y },
       target: {
         x: root.joints.leftDown.node.joints.leftUp.x,
         y: root.joints.leftDown.node.joints.leftUp.y
       },
-      type: "vertical" // TODO CHANGE TYPE
+      type: "vertical", // TODO CHANGE TYPE
+      edge: _this.edges.getEdgeByPair(root.pk, root.joints.leftDown.node.pk)
     });
 
     // from child to parent
     nodes
-      .filter(node => node.parent)
+      .filter(node => node.parent && node.lvl > 1)
       .map(node => {
         paths.push({
           source: {
@@ -476,8 +509,10 @@ class Graph extends GraphRender {
             x: node.joints.left.x,
             y: node.joints.left.y
           },
-          type: "horizontal" // TODO CHANGE TYPE
+          type: "horizontal", // TODO CHANGE TYPE
+          edge: _this.edges.getEdgeByPair(node.parent.pk, node.pk)
         });
+        return null;
       });
 
     // right upside-down
@@ -499,7 +534,8 @@ class Graph extends GraphRender {
               x: node.joints.rightUp.x,
               y: node.joints.rightUp.y
             },
-            type: "vertical" // TODO CHANGE TYPE
+            type: "vertical", // TODO CHANGE TYPE
+            edge: _this.edges.getEdgeByPair(topParent.pk, node.pk)
           });
         }
 
@@ -515,50 +551,101 @@ class Graph extends GraphRender {
     if (!(highlitedNode instanceof Node))
       throw Error("Argument highlitedNode must be instance of Node class");
 
+    if (highlitedNode.level !== 0 && isNullOrUndefined(highlitedNode.parent))
+      throw Error("Define parents in nodes first");
+
+    const createMegaNode = (nodes = [], level, parent) => {
+      if (isNullOrUndefined(nodes) || isNullOrUndefined(nodes.length)) {
+        throw Error("Argument nodes should be an Array of nodes");
+      }
+      return new Node(
+        {
+          nodeList: nodes,
+          countNodes() {
+            return this.nodeList.length;
+          },
+          countLeaf() {
+            return this.nodeList.filter(node => node.leaf).length;
+          },
+          appendNode(node) {
+            if (!(node instanceof Node))
+              throw Error(
+                "Argument highlitedNode must be instance of Node class"
+              );
+            this.nodeList.push(node);
+
+            return this;
+          },
+          level,
+          parent
+        },
+        false,
+        true
+      );
+    };
+
     const nodes = this.nodes.getAll();
     const last_lvl = this.getLastLvl(nodes);
-    for (let i = last_lvl; i > 1; i--) {
-      nodes.filter(node => node.lvl === i).map();
+
+    nodes.map(node => node instanceof Node && node.unsetHighlighted());
+    highlitedNode.setHighlighted();
+
+    function getAncestors(node) {
+      const state = { a: [], c: node };
+      for (;;) {
+        if (!state.c.parent) break;
+        state.a.push(state.c.parent);
+        state.c = state.c.parent;
+      }
+      return state.a;
     }
-    // TODO make good stuff
-    // if (this.getLastLvl(nodes) === highlitedNode.lvl) {
-    //   for (let i = highlitedNode.lvl - 1; i >= 1; i--) {
-    //     nodes
-    //       .filter(node => node.lvl === i)
-    //       .reduce(
-    //         (obj, node) => {
-    //           if (node === highlitedNode.parent) {
-    //             obj.parent = node;
-    //             return obj;
-    //           }
-    //           if (isNull(obj.megaNode)) {
-    //             obj.megaNode = new Node(
-    //               {
-    //                 listNodes: [],
-    //                 appendNode(node) {
-    //                   this.listNodes.push(node);
-    //                   return this;
-    //                 }
-    //               },
-    //               false,
-    //               true
-    //             );
-    //           }
-    //         },
-    //         { parent: null, megaNode: null }
-    //       );
-    //   }
-    // } else {
-    //   // to right
-    //   for (let i = main_lvl + 1; i <= last_lvl; i++) {
-    //     this.set_nodes_coords(nodes, i);
-    //   }
-    //   // to left
-    //   for (let i = main_lvl - 1; i >= 1; i--) {
-    //     this.set_nodes_coords(nodes, i);
-    //   }
-    // }
+    this.nodes = new NodeStore([
+      ...getAncestors(highlitedNode),
+      highlitedNode,
+      ...nodes.filter(node => node.parent === highlitedNode)
+    ]);
+
+    /* if (this.getLastLvl(nodes) === highlitedNode.lvl) {
+      for (let i = highlitedNode.lvl - 1; i >= 1; i--) {
+        nodes
+          .filter(node => node.lvl === i)
+          .reduce(
+            (obj, node) => {
+              if (node === highlitedNode.parent) {
+                obj.parent = node;
+                return obj;
+              }
+              if (isNull(obj.megaNode)) {
+                obj.megaNode = new Node(
+                  {
+                    listNodes: [],
+                    appendNode(node) {
+                      this.listNodes.push(node);
+                      return this;
+                    }
+                  },
+                  false,
+                  true
+                );
+              }
+            },
+            { parent: null, megaNode: null }
+          );
+      }
+    } else {
+      // to right
+      for (let i = main_lvl + 1; i <= last_lvl; i++) {
+        this.set_nodes_coords(nodes, i);
+      }
+      // to left
+      for (let i = main_lvl - 1; i >= 1; i--) {
+        this.set_nodes_coords(nodes, i);
+      }
+    } */
   }
+
+  // Убрать узлы, которые есть в мегаузлах
+  hideNodes() {}
 
   getLastLvl(nodes) {
     if (!(nodes[0] instanceof Node))
@@ -609,6 +696,18 @@ class Graph extends GraphRender {
         }
       }
     ];
+  }
+
+  swapNodes(node1, node2) {
+    if (!(node1 instanceof Node) || !(node2 instanceof Node))
+      throw Error("Arguments should be instances of Node");
+
+    if (node1.lvl !== node2.lvl)
+      throw Error("Nodes should have same real levels");
+
+    const swap = node1.lvlIndex;
+    node1.lvlIndex = node2.lvlIndex;
+    node2.lvlIndex = swap;
   }
 }
 

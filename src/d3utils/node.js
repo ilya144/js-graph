@@ -81,6 +81,10 @@ class Node {
     };
   }
 
+  getJoint(jointName) {
+    return this.joints[jointName];
+  }
+
   unsetJoint(joint) {
     if (!this.x || !this.y) throw Error("Node.x and Node.y should be defined");
 

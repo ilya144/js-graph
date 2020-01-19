@@ -32,7 +32,11 @@ class Node {
     });
 
     this.lvl = this.level; // real level, which used on rendering
+    /**
+     * !deprecated
+     */
     this.parent = null; // left it for backward compatibility
+
     this.parents = [];
     this.isDuplicate = isDuplicate;
     this.isMegaNode = isMegaNode;
@@ -94,9 +98,21 @@ class Node {
     this.joints[joint] = null;
   }
 
+  /**
+   * !deprecated
+   */
   unsetParent() {
     this.parent = null;
     return this;
+  }
+
+  getParent() {
+    if (this.parents.length > 1) throw Error("Node has more than one parent");
+    return this.parents[0] instanceof Node ? this.parents[0] : null;
+  }
+
+  getAllParents() {
+    return this.parents;
   }
 
   addParent(node) {
@@ -107,6 +123,7 @@ class Node {
 
   removeParent(node) {
     const index = this.parents.findIndex(parent => parent === node);
+    if (index === -1) return this;
     this.parents = [
       ...this.parents.slice(0, index),
       ...this.parents.slice(index + 1)

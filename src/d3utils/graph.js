@@ -1,6 +1,6 @@
 /* global window */
 import * as d3 from "d3";
-import { isNullOrUndefined } from "util";
+import { isNullOrUndefined, isUndefined } from "util";
 import { Node, NodeStore, Edge, EdgeStore, GraphRender } from ".";
 
 class Graph extends GraphRender {
@@ -13,6 +13,16 @@ class Graph extends GraphRender {
     };
     Array.prototype.emptyToZero = function() {
       return Array.from(this, item => item || 0);
+    };
+    Array.prototype.getLast = function() {
+      return this[this.length - 1];
+    };
+    Array.prototype.remove = function(index) {
+      if (!isNullOrUndefined(index) && index < this.length && index >= 0) {
+        this.move(index, this.length - 1);
+        this.pop();
+      }
+      return this;
     };
 
     const root = d3.select(entryRef);
@@ -106,14 +116,8 @@ class Graph extends GraphRender {
     this.fix_levels();
     this.set_lvl_indexes();
 
-    this.sortByLvlIndex();
-
-    //* Переместил Анонс
-    // this.swapNodes(
-    //   ...this.nodes
-    //     .getAll()
-    //     .filter(node => node.lvl === 3 && [3, 4].includes(node.lvlIndex))
-    // );
+    this.sort_by_lvl_index();
+    this.optimize_duplicates();
 
     this.define_coords();
     this.define_joints();
@@ -127,7 +131,7 @@ class Graph extends GraphRender {
         this.all_nodes.find(node => node.lvl === lvl && node.lvlIndex === index)
       );
       // this.set_lvl_indexes();
-      // this.sortByLvlIndex();
+      // this.sort_by_lvl_index();
       // this.define_coords();
       // this.define_joints();
       this.draw_nodes_by_coords(entry, this.nodes.getAll());
@@ -276,13 +280,13 @@ class Graph extends GraphRender {
     );
   }
 
-  sortByLvlIndex() {
+  sort_by_lvl_index() {
     if (this.nodes === undefined || this.edges === undefined)
       throw Error("define stores first");
 
     const nodes = this.nodes.getAll();
     const maxLvl = this.getLastLvl(nodes);
-    const minLvl = 1; // better make in functional style, not const
+    const minLvl = 1;
 
     const nodesByLvls = [];
     nodes.map(node => {
@@ -406,10 +410,10 @@ class Graph extends GraphRender {
 
     const nodes = this.nodes.getAll();
     const last_lvl = this.getLastLvl(nodes);
-    const main_lvl = this.getMainLvl(nodes);
+    const max_length_lvl = this.getMaxLengthLvl(nodes);
 
     nodes
-      .filter(node => node.lvl === main_lvl)
+      .filter(node => node.lvl === max_length_lvl)
       .map(node => {
         node.x = 320 * (node.lvl - 1) + 50;
         node.y = 86 + node.lvlIndex * 80;
@@ -417,17 +421,17 @@ class Graph extends GraphRender {
         return node;
       });
 
-    if (last_lvl === main_lvl) {
+    if (last_lvl === max_length_lvl) {
       for (let i = last_lvl - 1; i >= 1; i--) {
         this.set_nodes_coords(nodes, i);
       }
     } else {
       // to right
-      for (let i = main_lvl + 1; i <= last_lvl; i++) {
+      for (let i = max_length_lvl + 1; i <= last_lvl; i++) {
         this.set_nodes_coords_right(nodes, i);
       }
       // to left
-      for (let i = main_lvl - 1; i >= 1; i--) {
+      for (let i = max_length_lvl - 1; i >= 1; i--) {
         this.set_nodes_coords(nodes, i);
       }
     }
@@ -485,21 +489,40 @@ class Graph extends GraphRender {
 
     // left upside-down
     const root = nodes.find(node => node.level === 0);
-    const _this = this;
+
     paths.push({
       source: { x: root.joints.leftDown.x, y: root.joints.leftDown.y },
       target: {
         x: root.joints.leftDown.node.joints.leftUp.x,
         y: root.joints.leftDown.node.joints.leftUp.y
       },
-      type: "vertical", // TODO CHANGE TYPE
-      edge: _this.edges.getEdgeByPair(root.pk, root.joints.leftDown.node.pk)
+      type: "vertical",
+      edge: this.edges.getEdgeByPair(root.pk, root.joints.leftDown.node.pk)
     });
 
     // from child to parent
+
     nodes
       .filter(node => node.parent && node.lvl > 1)
       .map(node => {
+        const joinedNodes = node.getJoint("left").node;
+        if (joinedNodes instanceof Array) {
+          joinedNodes.map(nodeParent => {
+            paths.push({
+              source: {
+                x: nodeParent.joints.right.x,
+                y: nodeParent.joints.right.y
+              },
+              target: {
+                x: node.joints.left.x,
+                y: node.joints.left.y
+              },
+              type: "horizontal",
+              edge: this.edges.getEdgeByPair(nodeParent.pk, node.pk)
+            });
+          });
+          return null;
+        }
         paths.push({
           source: {
             x: node.parent.joints.right.x,
@@ -509,8 +532,8 @@ class Graph extends GraphRender {
             x: node.joints.left.x,
             y: node.joints.left.y
           },
-          type: "horizontal", // TODO CHANGE TYPE
-          edge: _this.edges.getEdgeByPair(node.parent.pk, node.pk)
+          type: "horizontal",
+          edge: this.edges.getEdgeByPair(node.parent.pk, node.pk)
         });
         return null;
       });
@@ -534,8 +557,8 @@ class Graph extends GraphRender {
               x: node.joints.rightUp.x,
               y: node.joints.rightUp.y
             },
-            type: "vertical", // TODO CHANGE TYPE
-            edge: _this.edges.getEdgeByPair(topParent.pk, node.pk)
+            type: "vertical",
+            edge: this.edges.getEdgeByPair(topParent.pk, node.pk)
           });
         }
 
@@ -599,49 +622,118 @@ class Graph extends GraphRender {
       }
       return state.a;
     }
+
+    // Убрать все узлы кроме выбранного, его предков и узлов на следующем уровне
     this.nodes = new NodeStore([
       ...getAncestors(highlitedNode),
       highlitedNode,
       ...nodes.filter(node => node.parent === highlitedNode)
     ]);
 
-    /* if (this.getLastLvl(nodes) === highlitedNode.lvl) {
-      for (let i = highlitedNode.lvl - 1; i >= 1; i--) {
-        nodes
-          .filter(node => node.lvl === i)
-          .reduce(
-            (obj, node) => {
-              if (node === highlitedNode.parent) {
-                obj.parent = node;
-                return obj;
-              }
-              if (isNull(obj.megaNode)) {
-                obj.megaNode = new Node(
-                  {
-                    listNodes: [],
-                    appendNode(node) {
-                      this.listNodes.push(node);
-                      return this;
-                    }
-                  },
-                  false,
-                  true
-                );
-              }
-            },
-            { parent: null, megaNode: null }
+    // TODO create and add all mega nodes
+  }
+
+  // Функция оптимизации количества дупликатов на одном уровне
+  optimize_duplicates() {
+    if (this.nodes === undefined || this.edges === undefined)
+      throw Error("define stores first");
+
+    if (isNullOrUndefined(this.nodes.getAll()[0].lvlIndex))
+      throw Error("define lvl indexes first");
+
+    const nodes = this.nodes.getAll();
+    const last_lvl = this.getLastLvl(nodes);
+
+    for (let i = last_lvl; i > 1; i--) {
+      const nodesOnLvl = nodes.filter(node => node.lvl === i);
+      const optimizedMap = {};
+      const notOptimizedMap = nodesOnLvl
+        .reduce(
+          (map, node) => {
+            if (map[node.pk] === undefined) {
+              map[node.pk] = [];
+            }
+            map[node.pk].push(node);
+            return map;
+          },
+          {
+            removeSingle() {
+              Object.keys(this).map(key =>
+                this[key].length === 1 ? delete this[key] : null
+              );
+              delete this.removeSingle;
+              return this;
+            }
+          }
+        )
+        .removeSingle();
+
+      //* Оптимизация дубликатов по группам
+      Object.values(notOptimizedMap).map(array => {
+        const main = array.find(node => !node.isDuplicate);
+        const dups = array.filter(node => node.isDuplicate);
+
+        dups.map(dupl => {
+          // Если дуликат и оригинал соседи - оптимизировать нечего
+          if (Math.abs(main.lvlIndex - dupl.lvlIndex) === 1) {
+            main.addParent(main.parent);
+            main.addParent(dupl.parent);
+            this.nodes.nodeList.remove(
+              this.nodes.nodeList.findIndex(n => n === dupl)
+            );
+            return;
+          }
+
+          // Если родители соседи - возможно перемещать придеться только деток (дупликаты)
+          const parentIndexDiff = main.parent.lvlIndex - dupl.parent.lvlIndex;
+          const main_sibs = nodes
+            .filter(node => node.parent === main.parent)
+            .sort(this.sortByField("lvlIndex"));
+          const dupl_sibs = nodes
+            .filter(node => node.parent === dupl.parent)
+            .sort(this.sortByField("lvlIndex"));
+
+          if (Math.abs(parentIndexDiff) === 1) {
+            if (parentIndexDiff > 0) {
+              // родитель главного снизу
+              if (main_sibs[0] !== main) this.swapNodes(main, main_sibs[0]);
+              if (dupl_sibs.getLast() !== dupl)
+                this.swapNodes(dupl, dupl_sibs.getLast());
+            } else {
+              // родитель главного сверху
+              if (main_sibs.getLast() !== main)
+                this.swapNodes(main, main_sibs.getLast());
+              if (dupl_sibs[0] !== dupl) this.swapNodes(dupl, dupl_sibs[0]);
+            }
+          } else {
+            if (parentIndexDiff > 0) {
+              // родитель главного снизу
+              if (main_sibs.getLast() !== main)
+                this.swapNodes(main, main_sibs.getLast());
+              if (dupl_sibs[0] !== dupl) this.swapNodes(dupl, dupl_sibs[0]);
+
+              this.moveNode(dupl, main.lvlIndex);
+              this.moveNode(dupl.parent, main.parent.lvlIndex);
+            } else {
+              // родитель главного сверху
+              if (main_sibs[0] !== main) this.swapNodes(main, main_sibs[0]);
+              if (dupl_sibs.getLast() !== dupl)
+                this.swapNodes(dupl, dupl_sibs.getLast());
+
+              this.moveNode(dupl, main.lvlIndex);
+              this.moveNode(dupl.parent, main.parent.lvlIndex);
+            }
+          }
+
+          this.nodes.nodeList.remove(
+            this.nodes.nodeList.findIndex(n => n === dupl)
           );
-      }
-    } else {
-      // to right
-      for (let i = main_lvl + 1; i <= last_lvl; i++) {
-        this.set_nodes_coords(nodes, i);
-      }
-      // to left
-      for (let i = main_lvl - 1; i >= 1; i--) {
-        this.set_nodes_coords(nodes, i);
-      }
-    } */
+        });
+
+        optimizedMap[main.pk] = notOptimizedMap[main.pk];
+        delete notOptimizedMap[main.pk];
+      });
+    }
   }
 
   // Убрать узлы, которые есть в мегаузлах
@@ -658,7 +750,7 @@ class Graph extends GraphRender {
   }
 
   // get lvl with maximum of nodes
-  getMainLvl(nodes) {
+  getMaxLengthLvl(nodes) {
     if (!(nodes[0] instanceof Node))
       throw Error("Argument nodes should be array of Node objects");
 
@@ -705,9 +797,27 @@ class Graph extends GraphRender {
     if (node1.lvl !== node2.lvl)
       throw Error("Nodes should have same real levels");
 
+    if (node1.parents.length > 0 || node2.parents.length > 0)
+      throw Error("You cant swap nodes with multiple parents");
+
     const swap = node1.lvlIndex;
     node1.lvlIndex = node2.lvlIndex;
     node2.lvlIndex = swap;
+  }
+
+  moveNode(node, toIndex) {
+    if (!(node instanceof Node))
+      throw Error("Argument should be instance of Node");
+
+    if (isNullOrUndefined(node.lvlIndex)) throw Error("Define lvl index first");
+
+    const nodes = this.nodes.getAll().filter(n => n.lvl === node.lvl);
+    nodes
+      .sort(this.sortByField("lvlIndex"))
+      .move(node.lvlIndex, toIndex)
+      .map((n, index) => {
+        n.lvlIndex = index;
+      });
   }
 }
 

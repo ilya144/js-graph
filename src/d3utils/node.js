@@ -98,17 +98,17 @@ class Node {
     this.joints[joint] = null;
   }
 
-  /**
-   * !deprecated
-   */
-  unsetParent() {
-    this.parent = null;
-    return this;
+  haveParents() {
+    return this.parents.length > 0;
   }
 
   getParent() {
     if (this.parents.length > 1) throw Error("Node has more than one parent");
     return this.parents[0] instanceof Node ? this.parents[0] : null;
+  }
+
+  getFirstParent() {
+    return this.parents[0];
   }
 
   getAllParents() {

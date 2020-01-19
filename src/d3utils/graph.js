@@ -1,6 +1,6 @@
 /* global window */
 import * as d3 from "d3";
-import { isNullOrUndefined, isUndefined } from "util";
+import { isNullOrUndefined } from "util";
 import { Node, NodeStore, Edge, EdgeStore, GraphRender } from ".";
 
 class Graph extends GraphRender {
@@ -208,13 +208,17 @@ class Graph extends GraphRender {
 
     const nodes = this.nodes.getAll().map(node => {
       if (node.edges_in !== "") {
-        node.parent = this.nodes.getNode(this.edges.getEdge(node.edges_in).sid);
+        const nodeParent = this.nodes.getNode(
+          this.edges.getEdge(node.edges_in).sid
+        );
+        nodeParent && node.addParent(nodeParent);
       }
       if (node.edges_in === "" && !node.isDuplicate) {
-        node.parent = this.nodes.getNode(
+        const nodeParent = this.nodes.getNode(
           this.edges.getEdgeByChild(node.pk) &&
             this.edges.getEdgeByChild(node.pk).sid
         );
+        nodeParent && node.addParent(nodeParent);
       }
       return node;
     });
@@ -237,7 +241,7 @@ class Graph extends GraphRender {
     nodes
       .filter(node => node.isDuplicate)
       .map(node => {
-        const parent = node.parent;
+        const parent = node.getParent();
         if (parent && node.lvl - parent.lvl > 1) {
           node.lvl = parent.lvl + 1;
         }
@@ -301,8 +305,8 @@ class Graph extends GraphRender {
     for (let i = maxLvl; i >= minLvl; i--) {
       for (let j = i; j <= maxLvl; j++) {
         const sorted = nodesByLvls[j].sort((a, b) => {
-          const x = a.parent ? a.parent.lvlIndex : 777;
-          const y = b.parent ? b.parent.lvlIndex : 777;
+          const x = a.getParent() ? a.getParent().lvlIndex : 777;
+          const y = b.getParent() ? b.getParent().lvlIndex : 777;
 
           return x - y;
         });
@@ -329,7 +333,7 @@ class Graph extends GraphRender {
       .filter((_, index) => index > 1 && index <= maxLvl)
       .map(array => {
         array
-          .filter(node => node.status === 2 && !node.parent)
+          .filter(node => node.status === 2 && !node.getParent())
           .map(node => {
             const topParent = this.nodes.getNode(
               this.edges.getEdgeByChild(node.pk) &&
@@ -359,37 +363,20 @@ class Graph extends GraphRender {
 
   // inner function in define_coords
   set_nodes_coords(nodes, i) {
+    const max_nodes_lvl = this.getMaxLengthLvl(nodes);
+
     nodes
       .filter(node => node.lvl === i)
       .sort(this.sortByField("lvlIndex"))
       .map((node, index, array) => {
         node.x = 320 * (node.lvl - 1) + 50;
-        node.y = nodes
-          .filter(innerNode => innerNode.parent === node)
-          .reduce(...this.getCoordReducer())
-          .average();
+        if (i < max_nodes_lvl)
+          node.y = nodes
+            .filter(innerNode => innerNode.getFirstParent() === node)
+            .reduce(...this.getCoordReducer())
+            .average();
 
-        if (index === 0) {
-          if (isNaN(node.y)) node.y = 86 + node.lvlIndex * 80;
-        } else {
-          if (isNaN(node.y)) node.y = 86 + node.lvlIndex * 80;
-
-          const diff = node.y - array[index - 1].y;
-          if (diff < 80) node.y += 80 - diff;
-        }
-
-        return [node.x, node.y];
-      });
-  }
-
-  // special for right-side moving
-  set_nodes_coords_right(nodes, i) {
-    nodes
-      .filter(node => node.lvl === i)
-      .sort(this.sortByField("lvlIndex"))
-      .map((node, index, array) => {
-        node.x = 320 * (node.lvl - 1) + 50;
-        node.y = node.parent && node.parent.y;
+        if (i > max_nodes_lvl) node.y = node.getParent() && node.getParent().y;
 
         if (index === 0) {
           if (isNaN(node.y)) node.y = 86 + node.lvlIndex * 80;
@@ -428,7 +415,7 @@ class Graph extends GraphRender {
     } else {
       // to right
       for (let i = max_length_lvl + 1; i <= last_lvl; i++) {
-        this.set_nodes_coords_right(nodes, i);
+        this.set_nodes_coords(nodes, i);
       }
       // to left
       for (let i = max_length_lvl - 1; i >= 1; i--) {
@@ -446,23 +433,23 @@ class Graph extends GraphRender {
 
     // define joints parent (lvl n) - child (lvl n + 1)
     nodes
-      .filter(node => node.parent)
+      .filter(node => node.haveParents())
       .map(node => {
-        node.setJoint("left", node.parent);
-        node.parent.setJoint("right", node);
+        node.setJoint("left", node.getAllParents());
+        node.getAllParents().map(parent => parent.setJoint("right", node));
         return node;
       });
 
     // define joints root - second node below him
     const root = nodes.find(node => node.level === 0);
-    const rootChild = nodes.find(node => node.parent === root);
+    const rootChild = nodes.find(node => node.getFirstParent() === root);
 
     root.setJoint("leftDown", rootChild);
     rootChild.setJoint("leftUp", root);
 
     // define joints node - tech node below him
     nodes
-      .filter(node => node.status === 2 && !node.parent)
+      .filter(node => node.status === 2 && !node.getFirstParent())
       .map(node => {
         const topParent = this.nodes.getNode(
           this.edges.getEdgeByChild(node.pk) &&
@@ -503,7 +490,7 @@ class Graph extends GraphRender {
     // from child to parent
 
     nodes
-      .filter(node => node.parent && node.lvl > 1)
+      .filter(node => node.haveParents() && node.lvl > 1)
       .map(node => {
         const joinedNodes = node.getJoint("left").node;
         if (joinedNodes instanceof Array) {
@@ -525,22 +512,22 @@ class Graph extends GraphRender {
         }
         paths.push({
           source: {
-            x: node.parent.joints.right.x,
-            y: node.parent.joints.right.y
+            x: node.getParent().joints.right.x,
+            y: node.getParent().joints.right.y
           },
           target: {
             x: node.joints.left.x,
             y: node.joints.left.y
           },
           type: "horizontal",
-          edge: this.edges.getEdgeByPair(node.parent.pk, node.pk)
+          edge: this.edges.getEdgeByPair(node.getParent().pk, node.pk)
         });
         return null;
       });
 
     // right upside-down
     nodes
-      .filter(node => node.status === 2 && !node.parent)
+      .filter(node => node.status === 2 && !node.getParent())
       .map(node => {
         const topParent = this.nodes.getNode(
           this.edges.getEdgeByChild(node.pk) &&
@@ -616,9 +603,9 @@ class Graph extends GraphRender {
     function getAncestors(node) {
       const state = { a: [], c: node };
       for (;;) {
-        if (!state.c.parent) break;
-        state.a.push(state.c.parent);
-        state.c = state.c.parent;
+        if (!state.c.getParent()) break;
+        state.a.push(state.c.getParent());
+        state.c = state.c.getParent();
       }
       return state.a;
     }
@@ -627,7 +614,7 @@ class Graph extends GraphRender {
     this.nodes = new NodeStore([
       ...getAncestors(highlitedNode),
       highlitedNode,
-      ...nodes.filter(node => node.parent === highlitedNode)
+      ...nodes.filter(node => node.getParent() === highlitedNode)
     ]);
 
     // TODO create and add all mega nodes
@@ -676,8 +663,7 @@ class Graph extends GraphRender {
         dups.map(dupl => {
           // Если дуликат и оригинал соседи - оптимизировать нечего
           if (Math.abs(main.lvlIndex - dupl.lvlIndex) === 1) {
-            main.addParent(main.parent);
-            main.addParent(dupl.parent);
+            main.addParent(dupl.getParent());
             this.nodes.nodeList.remove(
               this.nodes.nodeList.findIndex(n => n === dupl)
             );
@@ -685,12 +671,17 @@ class Graph extends GraphRender {
           }
 
           // Если родители соседи - возможно перемещать придеться только деток (дупликаты)
-          const parentIndexDiff = main.parent.lvlIndex - dupl.parent.lvlIndex;
+          const parentIndexDiff =
+            main.getParent().lvlIndex - dupl.getParent().lvlIndex;
           const main_sibs = nodes
-            .filter(node => node.parent === main.parent)
+            .filter(node =>
+              node.getAllParents().some(n => main.getAllParents().includes(n))
+            )
             .sort(this.sortByField("lvlIndex"));
           const dupl_sibs = nodes
-            .filter(node => node.parent === dupl.parent)
+            .filter(node =>
+              node.getAllParents().some(n => dupl.getAllParents().includes(n))
+            )
             .sort(this.sortByField("lvlIndex"));
 
           if (Math.abs(parentIndexDiff) === 1) {
@@ -713,7 +704,7 @@ class Graph extends GraphRender {
               if (dupl_sibs[0] !== dupl) this.swapNodes(dupl, dupl_sibs[0]);
 
               this.moveNode(dupl, main.lvlIndex);
-              this.moveNode(dupl.parent, main.parent.lvlIndex);
+              this.moveNode(dupl.getParent(), main.getParent().lvlIndex);
             } else {
               // родитель главного сверху
               if (main_sibs[0] !== main) this.swapNodes(main, main_sibs[0]);
@@ -721,10 +712,11 @@ class Graph extends GraphRender {
                 this.swapNodes(dupl, dupl_sibs.getLast());
 
               this.moveNode(dupl, main.lvlIndex);
-              this.moveNode(dupl.parent, main.parent.lvlIndex);
+              this.moveNode(dupl.getParent(), main.getParent().lvlIndex);
             }
           }
 
+          main.addParent(dupl.getParent());
           this.nodes.nodeList.remove(
             this.nodes.nodeList.findIndex(n => n === dupl)
           );
@@ -797,7 +789,7 @@ class Graph extends GraphRender {
     if (node1.lvl !== node2.lvl)
       throw Error("Nodes should have same real levels");
 
-    if (node1.parents.length > 0 || node2.parents.length > 0)
+    if (node1.parents.length > 1 || node2.parents.length > 1)
       throw Error("You cant swap nodes with multiple parents");
 
     const swap = node1.lvlIndex;

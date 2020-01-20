@@ -703,6 +703,12 @@ class Graph extends GraphRender {
         nodes
           .filter(node => node.getAllParents().includes(parentNode))
           .map(node => {
+            //* Правка: из технических узлов мегаузлы не делать
+            if (node.status === 2) {
+              megaNodes.push(node);
+              return;
+            }
+
             const mega = createMegaNode(
               [node],
               node.lvl,

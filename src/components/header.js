@@ -34,7 +34,8 @@ const useClasses = makeStyles(() => ({
   },
   clickable: {
     "& *": {
-      cursor: "pointer"
+      cursor: "pointer",
+      userSelect: "none"
     }
   }
 }));

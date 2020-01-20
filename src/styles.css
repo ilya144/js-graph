@@ -4,7 +4,44 @@
   box-sizing: border-box;
 }
 
-/* .App {
-  font-family: sans-serif;
+
+.meganode-number{
+  font-family: Fira Sans;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 20px;
+  line-height: 28px;
+
   text-align: center;
-} */
+
+  color: #FFFFFF;
+}
+
+.arrow-down, .arrow-up{
+  font-family: Fira Sans;
+  font-style: normal;
+  font-weight: bold;
+  font-size: 14px;
+  line-height: 18px;
+  color: #ffffff;
+}
+
+.arrow-up::before{
+  content: "↑ ";
+  font-family: Fira Sans;
+  font-style: normal;
+  font-weight: bold;
+  font-size: 14px;
+  line-height: 18px;
+  color: #5BB95B;
+}
+
+.arrow-down::before{
+  content: "↓ ";
+  font-family: Fira Sans;
+  font-style: normal;
+  font-weight: bold;
+  font-size: 14px;
+  line-height: 18px;
+  color: #859DE0;
+}

@@ -353,7 +353,7 @@ class GraphRender {
       .text(d => `${d.short_name} \n ${d.level === 0 ? "" : d.inn}`);
   }
 
-  draw_collapsed(entry, data) {
+  draw_meganodes(entry, data) {
     const g = entry
       .append("g")
       .attr("class", "meganodes")
@@ -365,23 +365,34 @@ class GraphRender {
       .attr("height", "56")
       .attr("transform", d => {
         const x = d.x;
-        const y = d.y;
+        const y = d.y + 4;
 
         return `translate(${x}, ${y})`;
       })
       .attr("fill", "none");
 
-    g.data([
-      { opacity: "0.2", cx: "49", fill: "#20263E" },
-      { opacity: "0.5", cx: "41", fill: "#20263E" },
-      { opacity: "1", cx: "33", fill: "#181E2F" }
-    ])
-      .join("circle")
-      .attr("opacity", d => d.opacity)
-      .attr("cx", d => d.cx)
+    g.append("circle")
+      .attr("opacity", "0.2")
+      .attr("cx", "49")
       .attr("cy", "28")
       .attr("r", "27")
-      .attr("fill", d => d.fill)
+      .attr("fill", "#20263E")
+      .attr("stroke", "#5A6487")
+      .attr("stroke-width", "2");
+    g.append("circle")
+      .attr("opacity", "0.5")
+      .attr("cx", "41")
+      .attr("cy", "28")
+      .attr("r", "27")
+      .attr("fill", "#20263E")
+      .attr("stroke", "#5A6487")
+      .attr("stroke-width", "2");
+    g.append("circle")
+      .attr("opacity", "1")
+      .attr("cx", "33")
+      .attr("cy", "28")
+      .attr("r", "27")
+      .attr("fill", "#181E2F")
       .attr("stroke", "#5A6487")
       .attr("stroke-width", "2");
 
@@ -393,21 +404,32 @@ class GraphRender {
       .attr("stroke", "#181E2F")
       .attr("stroke-width", "3");
 
-    g.append("path")
-      .attr(
-        "d",
-        "M94.308 17.816C94.4387 17.5453 94.5787 17.312 94.728 17.116C94.8773 16.92 95.0873 16.7007 95.358 16.458L96.828 15.114L98.06 16.402L93.3 20.714L88.54 16.402L89.772 15.114L91.242 16.458C91.5127 16.7007 91.7227 16.92 91.872 17.116C92.0213 17.312 92.1613 17.5453 92.292 17.816V10.844H94.308V17.816Z"
-      )
-      .attr("fill", "#859DE0");
+    g.append("foreignObject")
+      .attr("width", "25")
+      .attr("height", "18")
+      .attr("x", "84")
+      .attr("y", "6")
+      .append("xhtml:p")
+      .attr("class", "arrow-down")
+      .text(d => `${d.countNodes() - d.countLeaf()}`);
 
-    g.append("path")
-      .attr(
-        "d",
-        "M92.292 39.028C92.1613 39.2987 92.0213 39.532 91.872 39.728C91.7227 39.924 91.5127 40.1433 91.242 40.386L89.772 41.73L88.54 40.442L93.3 36.13L98.06 40.442L96.828 41.73L95.358 40.386C95.0873 40.1433 94.8773 39.924 94.728 39.728C94.5787 39.532 94.4387 39.2987 94.308 39.028V46H92.292V39.028Z"
-      )
-      .attr("fill", "#5BB95B");
+    g.append("foreignObject")
+      .attr("width", "25")
+      .attr("height", "18")
+      .attr("x", "84")
+      .attr("y", "32")
+      .append("xhtml:p")
+      .attr("class", "arrow-up")
+      .text(d => `${d.countNodes()}`);
 
-    // TODO append numbers
+    g.append("foreignObject")
+      .attr("width", "20")
+      .attr("height", "28")
+      .attr("x", "20")
+      .attr("y", "14")
+      .append("xhtml:p")
+      .attr("class", "meganode-number")
+      .text(d => `${d.countNodes()}`);
   }
 
   draw_edges_old(entry, data = "nodes") {
@@ -556,7 +578,7 @@ class GraphRender {
         `
       )
       .style("color", "#859DE0")
-      .text(d => `↓ ${d.edge.quantity}`);
+      .text(d => `↓ ${d.edge ? d.edge.quantity : ""}`);
   }
 }
 

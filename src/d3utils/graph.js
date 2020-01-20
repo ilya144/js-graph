@@ -145,7 +145,6 @@ class Graph extends GraphRender {
     this.draw_background(entry, Array(6), props.isVertical);
     this.draw_nodes_by_coords(entry, this.nodes.getAll(), draw_highlighted);
     this.draw_edges_by_joints(entry, this.make_paths());
-    console.log(this.nodes, this.edges);
   }
 
   create_svg(root, entryRef) {
@@ -482,15 +481,16 @@ class Graph extends GraphRender {
     // left upside-down
     const root = nodes.find(node => node.level === 0);
 
-    paths.push({
-      source: { x: root.joints.leftDown.x, y: root.joints.leftDown.y },
-      target: {
-        x: root.joints.leftDown.node.joints.leftUp.x,
-        y: root.joints.leftDown.node.joints.leftUp.y
-      },
-      type: "vertical",
-      edge: this.edges.getEdgeByPair(root.pk, root.joints.leftDown.node.pk)
-    });
+    root &&
+      paths.push({
+        source: { x: root.joints.leftDown.x, y: root.joints.leftDown.y },
+        target: {
+          x: root.joints.leftDown.node.joints.leftUp.x,
+          y: root.joints.leftDown.node.joints.leftUp.y
+        },
+        type: "vertical",
+        edge: this.edges.getEdgeByPair(root.pk, root.joints.leftDown.node.pk)
+      });
 
     // from child to parent
 
@@ -500,8 +500,9 @@ class Graph extends GraphRender {
         const joinedNodes = node.getJoint("left").node;
         if (joinedNodes instanceof Array) {
           joinedNodes.map(nodeParent => {
-            if (node.isMegaNode && false)
-              console.log(node.joints, node.nodeList[0].pk, nodeParent.pk);
+            Node = node;
+            if (node.isMegaNode) Node = node.nodeList[0];
+
             paths.push({
               source: {
                 x: nodeParent.joints.right.x,
@@ -512,7 +513,7 @@ class Graph extends GraphRender {
                 y: node.joints.left.y
               },
               type: "horizontal",
-              edge: this.edges.getEdgeByPair(nodeParent.pk, node.pk)
+              edge: this.edges.getEdgeByPair(nodeParent.pk, Node.pk)
             });
           });
           return null;
@@ -596,7 +597,6 @@ class Graph extends GraphRender {
     };
 
     const nodes = this.nodes.getAll();
-    const last_lvl = this.getLastLvl(nodes);
 
     nodes.map(node => node instanceof Node && node.unsetHighlighted());
     highlitedNode.setHighlighted();
@@ -606,8 +606,25 @@ class Graph extends GraphRender {
       const state = { all: [], current: [node] };
       for (;;) {
         if (!state.current.some(n => n.haveParents())) break;
+
         state.all.push(...state.current.flatMap(n => n.getAllParents()));
         state.current = state.current.flatMap(n => n.getAllParents());
+      }
+      return state.all;
+    }
+    function getDescendants(parentNode) {
+      const state = { all: [], current: [parentNode] };
+      for (;;) {
+        const childrenNextLvl = state.current.flatMap(node =>
+          nodes
+            .filter(n => n.lvl === node.lvl + 1)
+            .filter(n => n.getAllParents().includes(node))
+        );
+
+        if (childrenNextLvl.length === 0) break;
+
+        state.all.push(...childrenNextLvl);
+        state.current = childrenNextLvl;
       }
       return state.all;
     }
@@ -654,7 +671,7 @@ class Graph extends GraphRender {
             node =>
               node !== highlitedNode &&
               node.lvl === index + 1 &&
-              (node.getAllParents().includes(parentNode) || !node.haveParents())
+              node.getAllParents().includes(parentNode)
           )
           .filter(
             node =>
@@ -663,7 +680,7 @@ class Graph extends GraphRender {
                 ancestorsByLvl[index + 1].includes(node)
               )
           );
-        // console.log(a, ++index);
+
         a.map(node => {
           //* Тута делаем мегаузел
           const mega = createMegaNode(
@@ -677,15 +694,37 @@ class Graph extends GraphRender {
             mega.setJoint("left", parentNode);
             parentNode.setJoint("right", mega);
           }
-          nodes
-            .filter(n => !noMegaArray.includes(n))
-            .filter(n => n.getAllParents().includes(node))
-            .map(n => mega.appendNode(n));
+          getDescendants(node).map(n => mega.appendNode(n));
 
           megaNodes.push(mega);
         });
       });
     });
+
+    // Создаем мегаузлы из внуков выделенного узла
+    noMegaArray
+      .filter(node => node.getAllParents().includes(highlitedNode))
+      .filter(node => nodes.filter(n => n.getAllParents().includes(node)))
+      .map(parentNode => {
+        nodes
+          .filter(node => node.getAllParents().includes(parentNode))
+          .map(node => {
+            const mega = createMegaNode(
+              [node],
+              node.lvl,
+              node.haveParents() ? parentNode : null
+            );
+            mega.x = node.x;
+            mega.y = node.y;
+            if (mega.haveParents()) {
+              mega.setJoint("left", parentNode);
+              parentNode.setJoint("right", mega);
+            }
+            getDescendants(node).map(n => mega.appendNode(n));
+
+            megaNodes.push(mega);
+          });
+      });
 
     // Создаем новое хранилище узлов, в соотвествии с выбранным
     this.nodes = new NodeStore([...noMegaArray, ...megaNodes]);

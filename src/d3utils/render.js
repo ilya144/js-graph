@@ -575,6 +575,7 @@ class GraphRender {
           font-size: 14px;
           line-height: 18px;
           text-align: left;
+          user-select: none;
         `
       )
       .style("color", "#859DE0")

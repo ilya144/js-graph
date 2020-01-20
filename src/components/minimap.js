@@ -36,15 +36,18 @@ const useClasses = makeStyles(() => ({
 const Minimap = ({ zoom, ...props }) => {
   const classes = useClasses();
   const [showMap, setShowMap] = useState(false);
+  const [isDrag, setDrag] = useState(false);
   const setZoom = k => {
+    if (isNaN(k)) return;
+    if (k > 2.5) k = 2.5;
+    if (k < 0.8) k = 0.8;
+
     props.useCallback.setZoom(k);
     props.setZoom(k);
   };
 
   return (
     <Box className={classes.minimap}>
-      {/* {showMap ? (
-        <> */}
       <div
         className="minimap"
         style={{
@@ -53,9 +56,7 @@ const Minimap = ({ zoom, ...props }) => {
           margin: "16px",
           display: showMap ? "block" : "none"
         }}
-      >
-        {/* <use xlinkHref="#entry" /> */}
-      </div>
+      />
       <svg
         className={[classes.close, classes.clickable].join(" ")}
         width="16"
@@ -75,8 +76,6 @@ const Minimap = ({ zoom, ...props }) => {
           fill="#5A6487"
         />
       </svg>
-      {/* </>
-      ) : null} */}
       <Box className={classes.zoomBar}>
         <svg
           className={classes.clickable}
@@ -87,19 +86,22 @@ const Minimap = ({ zoom, ...props }) => {
           xmlns="http://www.w3.org/2000/svg"
           style={{ margin: "8px" }}
           onClick={() => {
-            const newZoom = zoom - 0.1;
-            if (newZoom < 0.8) setZoom(0.8);
-            else setZoom(newZoom);
+            setZoom(zoom - 0.1);
           }}
         >
           <path d="M13 18H27V21H13V18Z" fill="white" />
         </svg>
         <svg
           width="168"
-          height="11"
+          // height="11"
+          height="40"
           viewBox="0 0 168 11"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
+          onMouseMove={e =>
+            isDrag && setZoom((e.nativeEvent.offsetX + 0.74 * 92.25) / 92.25)
+          }
+          onMouseLeave={() => setDrag(false)}
         >
           <rect
             opacity="0.6"
@@ -109,8 +111,6 @@ const Minimap = ({ zoom, ...props }) => {
             rx="1.5"
             fill="#5A6487"
           />
-          {/* <rect y="3" width="64" height="3" rx="1.5" fill="#859DE0" />
-            <circle cx="65.5" cy="5.5" r="5.5" fill="#859DE0" /> */}
           <rect
             y="3"
             width={(zoom - 0.8) * 100}
@@ -124,6 +124,8 @@ const Minimap = ({ zoom, ...props }) => {
             cy="5.5"
             r="5.5"
             fill="#859DE0"
+            onMouseDown={() => setDrag(true)}
+            onMouseUp={() => setDrag(false)}
           />
         </svg>
         <svg
@@ -135,9 +137,7 @@ const Minimap = ({ zoom, ...props }) => {
           xmlns="http://www.w3.org/2000/svg"
           style={{ marginLeft: "8px", [showMap && "marginRight"]: "8px" }}
           onClick={() => {
-            const newZoom = zoom + 0.1;
-            if (newZoom > 2.5) setZoom(2.5);
-            else setZoom(newZoom);
+            setZoom(zoom + 0.1);
           }}
         >
           <path

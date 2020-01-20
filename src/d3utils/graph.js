@@ -134,8 +134,11 @@ class Graph extends GraphRender {
       // this.sort_by_lvl_index();
       // this.define_coords();
       // this.define_joints();
+      this.nodes.getAll().map(node => node.fixJointParents("left"));
+
       this.draw_nodes_by_coords(entry, this.nodes.getAll());
       this.draw_edges_by_joints(entry, this.make_paths());
+      this.draw_meganodes(entry, this.nodes.getAll());
       props.setHeaderText("Окружение НП по выбранному...");
     };
 
@@ -376,7 +379,8 @@ class Graph extends GraphRender {
             .reduce(...this.getCoordReducer())
             .average();
 
-        if (i > max_nodes_lvl) node.y = node.getParent() && node.getParent().y;
+        if (i > max_nodes_lvl)
+          node.y = node.getFirstParent() && node.getFirstParent().y;
 
         if (index === 0) {
           if (isNaN(node.y)) node.y = 86 + node.lvlIndex * 80;
@@ -435,8 +439,9 @@ class Graph extends GraphRender {
     nodes
       .filter(node => node.haveParents())
       .map(node => {
-        node.setJoint("left", node.getAllParents());
-        node.getAllParents().map(parent => parent.setJoint("right", node));
+        const parents = node.getAllParents().filter(n => nodes.includes(n));
+        node.setJoint("left", parents);
+        parents.map(parent => parent.setJoint("right", node));
         return node;
       });
 
@@ -495,6 +500,8 @@ class Graph extends GraphRender {
         const joinedNodes = node.getJoint("left").node;
         if (joinedNodes instanceof Array) {
           joinedNodes.map(nodeParent => {
+            if (node.isMegaNode && false)
+              console.log(node.joints, node.nodeList[0].pk, nodeParent.pk);
             paths.push({
               source: {
                 x: nodeParent.joints.right.x,
@@ -529,12 +536,13 @@ class Graph extends GraphRender {
     nodes
       .filter(node => node.status === 2 && !node.getParent())
       .map(node => {
+        // TODO УБРАТЬ getEdgeByChild
         const topParent = this.nodes.getNode(
           this.edges.getEdgeByChild(node.pk) &&
             this.edges.getEdgeByChild(node.pk).sid
         );
 
-        if (topParent) {
+        if (topParent && topParent.lvl === node.lvl) {
           paths.push({
             source: {
               x: topParent.joints.rightDown.x,
@@ -561,9 +569,6 @@ class Graph extends GraphRender {
     if (!(highlitedNode instanceof Node))
       throw Error("Argument highlitedNode must be instance of Node class");
 
-    if (highlitedNode.level !== 0 && isNullOrUndefined(highlitedNode.parent))
-      throw Error("Define parents in nodes first");
-
     const createMegaNode = (nodes = [], level, parent) => {
       if (isNullOrUndefined(nodes) || isNullOrUndefined(nodes.length)) {
         throw Error("Argument nodes should be an Array of nodes");
@@ -579,19 +584,15 @@ class Graph extends GraphRender {
           },
           appendNode(node) {
             if (!(node instanceof Node))
-              throw Error(
-                "Argument highlitedNode must be instance of Node class"
-              );
+              throw Error("Argument node must be instance of Node class");
             this.nodeList.push(node);
-
             return this;
           },
-          level,
-          parent
+          level
         },
         false,
         true
-      );
+      ).addParent(parent);
     };
 
     const nodes = this.nodes.getAll();
@@ -600,24 +601,94 @@ class Graph extends GraphRender {
     nodes.map(node => node instanceof Node && node.unsetHighlighted());
     highlitedNode.setHighlighted();
 
+    // Обратный обход дерева узлов,
     function getAncestors(node) {
-      const state = { a: [], c: node };
+      const state = { all: [], current: [node] };
       for (;;) {
-        if (!state.c.getParent()) break;
-        state.a.push(state.c.getParent());
-        state.c = state.c.getParent();
+        if (!state.current.some(n => n.haveParents())) break;
+        state.all.push(...state.current.flatMap(n => n.getAllParents()));
+        state.current = state.current.flatMap(n => n.getAllParents());
       }
-      return state.a;
+      return state.all;
     }
 
-    // Убрать все узлы кроме выбранного, его предков и узлов на следующем уровне
-    this.nodes = new NodeStore([
-      ...getAncestors(highlitedNode),
-      highlitedNode,
-      ...nodes.filter(node => node.getParent() === highlitedNode)
-    ]);
+    // Массив предков выделенного узла
+    const ancestorsArray = Array.from(new Set(getAncestors(highlitedNode)));
 
-    // TODO create and add all mega nodes
+    // Массив детей расстоянии одного ребра от выбранного узла
+    const highlitedChildren = nodes.filter(node =>
+      node.getAllParents().includes(highlitedNode)
+    );
+
+    // Массив узлов, НЕ являющиеся частью мегаузлов
+    const noMegaArray = [
+      ...ancestorsArray,
+      highlitedNode,
+      ...highlitedChildren
+    ];
+    noMegaArray.map(node => {
+      const parents = node.getAllParents().filter(n => noMegaArray.includes(n));
+      node.flushParents();
+      parents.map(n => node.addParent(n));
+    });
+
+    // Массив мегаузлов
+    const megaNodes = [];
+
+    // Обход дерева от корня до выделленого с созданием мегаузлов
+    const ancestorsByLvl = [];
+    ancestorsArray.map(node => {
+      if (ancestorsByLvl[node.lvl] === undefined) {
+        ancestorsByLvl[node.lvl] = [];
+      }
+      ancestorsByLvl[node.lvl].push(node);
+      return node;
+    });
+
+    ancestorsByLvl.map((array, index) => {
+      //* Обходим дерево предков послойно и по каждому предку
+      array.map(parentNode => {
+        //* Получаем список узлов, которые могу образовать мегаузел
+        const a = nodes
+          .filter(
+            node =>
+              node !== highlitedNode &&
+              node.lvl === index + 1 &&
+              (node.getAllParents().includes(parentNode) || !node.haveParents())
+          )
+          .filter(
+            node =>
+              !(
+                ancestorsByLvl[index + 1] instanceof Array &&
+                ancestorsByLvl[index + 1].includes(node)
+              )
+          );
+        // console.log(a, ++index);
+        a.map(node => {
+          //* Тута делаем мегаузел
+          const mega = createMegaNode(
+            [node],
+            node.lvl,
+            node.haveParents() ? parentNode : null
+          );
+          mega.x = node.x;
+          mega.y = node.y;
+          if (mega.haveParents()) {
+            mega.setJoint("left", parentNode);
+            parentNode.setJoint("right", mega);
+          }
+          nodes
+            .filter(n => !noMegaArray.includes(n))
+            .filter(n => n.getAllParents().includes(node))
+            .map(n => mega.appendNode(n));
+
+          megaNodes.push(mega);
+        });
+      });
+    });
+
+    // Создаем новое хранилище узлов, в соотвествии с выбранным
+    this.nodes = new NodeStore([...noMegaArray, ...megaNodes]);
   }
 
   // Функция оптимизации количества дупликатов на одном уровне
@@ -628,7 +699,7 @@ class Graph extends GraphRender {
     if (isNullOrUndefined(this.nodes.getAll()[0].lvlIndex))
       throw Error("define lvl indexes first");
 
-    const nodes = this.nodes.getAll();
+    const nodes = this.nodes.getAll().filter(node => !node.isMegaNode);
     const last_lvl = this.getLastLvl(nodes);
 
     for (let i = last_lvl; i > 1; i--) {
@@ -727,9 +798,6 @@ class Graph extends GraphRender {
       });
     }
   }
-
-  // Убрать узлы, которые есть в мегаузлах
-  hideNodes() {}
 
   getLastLvl(nodes) {
     if (!(nodes[0] instanceof Node))

@@ -1,3 +1,5 @@
+import { isNullOrUndefined } from "util";
+
 class Node {
   /**
    * Класс узла
@@ -32,10 +34,6 @@ class Node {
     });
 
     this.lvl = this.level; // real level, which used on rendering
-    /**
-     * !deprecated
-     */
-    this.parent = null; // left it for backward compatibility
 
     this.parents = [];
     this.isDuplicate = isDuplicate;
@@ -89,13 +87,25 @@ class Node {
     return this.joints[jointName];
   }
 
-  unsetJoint(joint) {
+  unsetJoint(jointName) {
     if (!this.x || !this.y) throw Error("Node.x and Node.y should be defined");
 
-    if (Node.joints[joint] === undefined)
+    if (Node.joints[jointName] === undefined)
       throw Error("Wrong name of joint, see Node.joints keys");
 
-    this.joints[joint] = null;
+    this.joints[jointName] = null;
+  }
+
+  fixJointParents(jointName) {
+    if (Node.joints[jointName] === undefined)
+      throw Error("Wrong name of joint, see Node.joints keys");
+
+    if (this.joints[jointName] === null) return this;
+    const joint = this.getJoint(jointName);
+    this.setJoint(
+      jointName,
+      [joint.node].flat().filter(n => this.getAllParents().includes(n))
+    );
   }
 
   haveParents() {
@@ -116,7 +126,9 @@ class Node {
   }
 
   addParent(node) {
-    if (!(node instanceof Node)) throw Error("Argument node instance of Node");
+    if (isNullOrUndefined(node)) return this;
+    if (!(node instanceof Node))
+      throw Error("Argument node should be instance of Node");
     this.parents.push(node);
     return this;
   }

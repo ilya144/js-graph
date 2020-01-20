@@ -64,13 +64,7 @@ class Graph extends GraphRender {
           outer.call(zoom_obj.transform, d3.zoomIdentity);
         }, duration);
       },
-      setZoom: k => {
-        const zoomState = d3.zoomIdentity;
-        zoomState.k = k;
-        outer.call(zoom_obj.transform, zoomState);
-        outer.node().__zoom = zoomState;
-        d3.select(".minimap svg").node().__zoom = zoomState;
-      },
+      setZoom: k => outer.call(zoom_obj.scaleTo, k),
       callResize: this.create_resize_callback(main_svg, entryRef),
       callMain: () => this.main(entry, data, props)
     });

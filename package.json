@@ -1,6 +1,6 @@
 {
   "name": "js-graph",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "React/d3 application for building data-based graph",
   "main": "index.js",
   "scripts": {

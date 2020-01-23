@@ -124,10 +124,7 @@ class Graph extends GraphRender {
       this.make_mega_nodes(
         this.all_nodes.find(node => node.lvl === lvl && node.lvlIndex === index)
       );
-      // this.set_lvl_indexes();
-      // this.sort_by_lvl_index();
-      // this.define_coords();
-      // this.define_joints();
+
       this.nodes.getAll().map(node => node.fixJointParents("left"));
 
       this.draw_nodes_by_coords(entry, this.nodes.getAll());
@@ -531,7 +528,7 @@ class Graph extends GraphRender {
     nodes
       .filter(node => node.status === 2 && !node.getParent())
       .map(node => {
-        // TODO УБРАТЬ getEdgeByChild
+        
         const topParent = this.nodes.getNode(
           this.edges.getEdgeByChild(node.pk) &&
             this.edges.getEdgeByChild(node.pk).sid

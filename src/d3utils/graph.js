@@ -1,6 +1,6 @@
 /* global window */
 import * as d3 from "d3";
-import { isNullOrUndefined } from "util";
+import { isNullOrUndefined, isUndefined } from "util";
 import { Node, NodeStore, Edge, EdgeStore, GraphRender } from ".";
 
 class Graph extends GraphRender {
@@ -575,12 +575,14 @@ class Graph extends GraphRender {
             return this.nodeList.length;
           },
           countLeaf() {
-            return this.nodeList.filter(node => node.leaf).length;
+            // return this.nodeList.filter(node => node.leaf).length;
+            return this.nodeList.filter(node => node.joints.right === null).length;
           },
           appendNode(node) {
             if (!(node instanceof Node))
               throw Error("Argument node must be instance of Node class");
-            this.nodeList.push(node);
+            if (isUndefined(this.nodeList.find(n => n === node)))
+              this.nodeList.push(node);
             return this;
           },
           level
@@ -656,11 +658,14 @@ class Graph extends GraphRender {
       return node;
     });
 
+    //* Обходим дерево предков послойно
     ancestorsByLvl.map((array, index) => {
-      //* Обходим дерево предков послойно и по каждому предку
+      //* Обходим дерево по каждому предку на уровне
+
       array.map(parentNode => {
         //* Получаем список узлов, которые могу образовать мегаузел
-        const a = nodes
+
+        const childs = nodes
           .filter(
             node =>
               node !== highlitedNode &&
@@ -675,23 +680,28 @@ class Graph extends GraphRender {
               )
           );
 
-        a.map(node => {
+        if (childs.length > 0) {
           //* Тута делаем мегаузел
           const mega = createMegaNode(
-            [node],
-            node.lvl,
-            node.haveParents() ? parentNode : null
+            [childs[0]],
+            childs[0].lvl,
+            childs[0].haveParents() ? parentNode : null
           );
-          mega.x = node.x;
-          mega.y = node.y;
+          mega.x = childs[0].x;
+          mega.y = childs[0].y;
           if (mega.haveParents()) {
             mega.setJoint("left", parentNode);
             parentNode.setJoint("right", mega);
           }
-          getDescendants(node).map(n => mega.appendNode(n));
+          childs.map(node => {
+            mega.appendNode(node);
 
+            getDescendants(node)
+              .filter(n => n.status === 1)
+              .map(n => mega.appendNode(n));
+          });
           megaNodes.push(mega);
-        });
+        }
       });
     });
 
@@ -700,30 +710,44 @@ class Graph extends GraphRender {
       .filter(node => node.getAllParents().includes(highlitedNode))
       .filter(node => nodes.filter(n => n.getAllParents().includes(node)))
       .map(parentNode => {
-        nodes
-          .filter(node => node.getAllParents().includes(parentNode))
-          .map(node => {
+        const childs = nodes.filter(node =>
+          node.getAllParents().includes(parentNode)
+        );
+
+        if (childs.length > 0) {
+          const root = childs.find(n => n.status === 1);
+          childs.map(node => (node.status === 2 ? megaNodes.push(node) : null));
+
+          if (isUndefined(root)) return;
+
+          const mega = createMegaNode(
+            [root],
+            root.lvl,
+            root.haveParents() ? parentNode : null
+          );
+          mega.x = root.x;
+          mega.y = root.y;
+          if (mega.haveParents()) {
+            mega.setJoint("left", parentNode);
+            parentNode.setJoint("right", mega);
+          }
+
+          childs.map(node => {
             //* Правка: из технических узлов мегаузлы не делать
             if (node.status === 2) {
               megaNodes.push(node);
               return;
             }
+            mega.appendNode(node);
 
-            const mega = createMegaNode(
-              [node],
-              node.lvl,
-              node.haveParents() ? parentNode : null
-            );
-            mega.x = node.x;
-            mega.y = node.y;
-            if (mega.haveParents()) {
-              mega.setJoint("left", parentNode);
-              parentNode.setJoint("right", mega);
-            }
-            getDescendants(node).map(n => mega.appendNode(n));
-
-            megaNodes.push(mega);
+            getDescendants(node)
+              .filter(n => n.status === 1)
+              // .filter(n => !n.isDuplicate)
+              .map(n => mega.appendNode(n));
           });
+          // console.log(mega.nodeList);
+          megaNodes.push(mega);
+        }
       });
 
     // Создаем новое хранилище узлов, в соотвествии с выбранным

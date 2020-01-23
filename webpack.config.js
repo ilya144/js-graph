@@ -3,10 +3,9 @@ const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 
-const isEnvProduction = false;
 
-module.exports = {
-  mode: "none", //'production'
+module.exports = env => ({
+  mode: env.prod ? "production" : "none",
   entry: {
     main: path.resolve(__dirname, "./src/index.js")
   },
@@ -50,7 +49,7 @@ module.exports = {
           filename: "index.html",
           favicon: "./public/favicon.ico"
         },
-        isEnvProduction
+        env.prod
           ? {
               minify: {
                 removeComments: true,
@@ -97,4 +96,4 @@ module.exports = {
       }
     ]
   }
-};
+});

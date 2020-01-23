@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"hello\"",
-    "build": "webpack",
-    "start": "webpack-dev-server"
+    "build": "webpack --env.prod",
+    "start": "webpack-dev-server --env.dev" 
   },
   "repository": {
     "type": "git",

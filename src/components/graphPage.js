@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from "react";
 import { Box } from "@material-ui/core";
 import { makeStyles } from "@material-ui/core/styles";
 import { Graph } from "../d3utils";
-import Data from "../d3utils/graph-data";
+// import Data from "../d3utils/graph-data";
 
 const useClasses = makeStyles(() => ({
   entryContainer: {
@@ -39,7 +39,11 @@ const GraphPage = props => {
 
   useEffect(() => {
     if (graphRef) {
-      const graph = new Graph(graphRef.current, props, Data.data);
+      fetch("/graph.xlsx.json").then(res =>
+        res.json().then(data => {
+          const graph = new Graph(graphRef.current, props, data.data);
+        })
+      );
     }
   }, [graphRef]);
 

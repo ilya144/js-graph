@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Typography, Icon, Box, Grid } from "@material-ui/core";
 import { makeStyles } from "@material-ui/core/styles";
-import jsonData from "../d3utils/graph-data";
 
 const useClasses = makeStyles(theme => ({
   first: {
@@ -100,7 +99,7 @@ const SlideMenu = props => {
                 width: "256px"
               }}
             >
-              {jsonData.data.detail.p_name}
+              {props.Data.detail.p_name}
             </Typography>
           </Box>
         ) : (
@@ -170,7 +169,7 @@ const SlideMenu = props => {
                   lineHeight: "22px"
                 }}
               >
-                {jsonData.data.detail.ipt}
+                {props.Data.detail.ipt}
               </Typography>
             </Grid>
             <Grid container alignItems="center">
@@ -200,7 +199,7 @@ const SlideMenu = props => {
                   lineHeight: "22px"
                 }}
               >
-                {jsonData.data.detail.fr_inn}
+                {props.Data.detail.fr_inn}
               </Typography>
             </Grid>
           </Box>
@@ -241,7 +240,7 @@ const SlideMenu = props => {
                   lineHeight: "22px"
                 }}
               >
-                {`${jsonData.data.detail.imp_cnt} ${jsonData.data.detail.unit_name}`}
+                {`${props.Data.detail.imp_cnt} ${props.Data.detail.unit_name}`}
               </Typography>
             </Grid>
 
@@ -272,7 +271,7 @@ const SlideMenu = props => {
                   lineHeight: "22px"
                 }}
               >
-                {`${jsonData.data.detail.price_min} ₽`}
+                {`${props.Data.detail.price_min} ₽`}
               </Typography>
             </Grid>
 
@@ -303,7 +302,7 @@ const SlideMenu = props => {
                   lineHeight: "22px"
                 }}
               >
-                {`${jsonData.data.detail.price_max} ₽`}
+                {`${props.Data.detail.price_max} ₽`}
               </Typography>
             </Grid>
           </Box>

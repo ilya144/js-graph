@@ -32,6 +32,14 @@ const useClasses = makeStyles(() => ({
   }
 }));
 
+function getJsonData(url) {
+  const xmlhttp = new XMLHttpRequest();
+  xmlhttp.open("GET", url, false);
+  xmlhttp.send();
+
+  return JSON.parse(xmlhttp.responseText);
+}
+
 const App = () => {
   const classes = useClasses();
   const [zoom, setZoom] = useState(1);
@@ -40,6 +48,8 @@ const App = () => {
   const toggleLegend = () => setShowLegend(!showLegend);
   const [isVertical, setVertical] = useState(false);
   const [headerText, setHeaderText] = useState("Общий режим");
+
+  const { data: Data } = getJsonData("/graph.xlsx.json");
 
   return (
     <Container className={classes.app}>
@@ -59,13 +69,14 @@ const App = () => {
         </Box>
       ) : (
         <Box className={classes.content}>
-          <SlideMenu useCallback={useCallback} />
+          <SlideMenu useCallback={useCallback} Data={Data} />
           <GraphPage
             setZoom={setZoom}
             useCallback={useCallback}
             setCallback={setCallback}
             isVertical={isVertical}
             setHeaderText={setHeaderText}
+            Data={Data}
           />
           <SideBar useCallback={useCallback} showLegend={toggleLegend} />
           <Minimap zoom={zoom} setZoom={setZoom} useCallback={useCallback} />

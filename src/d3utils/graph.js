@@ -35,20 +35,27 @@ class Graph extends GraphRender {
       const dx = (d3.event.transform.x / d3.event.transform.k / 1920) * 268;
       const dy = (d3.event.transform.y / d3.event.transform.k / 1080) * 130;
 
-      const mapWidth = parseFloat(entry.node().getBoundingClientRect().width);
-      const mapHeight = parseFloat(entry.node().getBoundingClientRect().height);
-      const factor = mapWidth * 0.008;
+      const winWidth = main_svg.node().getBoundingClientRect().width;
+      const winHeight = main_svg.node().getBoundingClientRect().height;
+      const minimapScale = 0.15;
 
       d3.select(".minimap > svg > rect")
-        .attr("width", mapWidth / factor / d3.event.transform.k)
-        .attr("height", mapHeight / factor / d3.event.transform.k)
+        .attr("width", (winWidth * minimapScale) / d3.event.transform.k)
+        .attr("height", (winHeight * minimapScale) / d3.event.transform.k)
         .attr("transform", `translate(${-dx},${-dy})`);
+
       outer.node().__zoom = d3.event.transform;
       d3.select(".minimap svg").node().__zoom = d3.event.transform;
 
       props.setZoom(d3.event.transform.k);
     });
-    window.onresize = this.create_resize_callback(main_svg, entryRef);
+    window.onresize = () => {
+      main_svg
+        .attr("width", window.innerWidth - entryRef.offsetLeft)
+        .attr("height", window.innerHeight - entryRef.offsetTop);
+
+      outer.call(zoom_obj.transform, outer.node().__zoom);
+    };
 
     this.main(entry, data, props);
 
@@ -65,7 +72,7 @@ class Graph extends GraphRender {
         }, duration);
       },
       setZoom: k => outer.call(zoom_obj.scaleTo, k),
-      callResize: this.create_resize_callback(main_svg, entryRef),
+      callResize: window.onresize,
       callMain: () => this.main(entry, data, props)
     });
     d3.select(".minimap")
@@ -146,14 +153,6 @@ class Graph extends GraphRender {
       .style("position", "absolute")
       .attr("width", window.innerWidth - entryRef.offsetLeft)
       .attr("height", window.innerHeight - entryRef.offsetTop);
-  }
-
-  create_resize_callback(main_svg, entryRef) {
-    return () => {
-      main_svg
-        .attr("width", window.innerWidth - entryRef.offsetLeft)
-        .attr("height", window.innerHeight - entryRef.offsetTop);
-    };
   }
 
   create_zoom(scaleExtent, translateExtentMax, callback) {
@@ -528,7 +527,6 @@ class Graph extends GraphRender {
     nodes
       .filter(node => node.status === 2 && !node.getParent())
       .map(node => {
-        
         const topParent = this.nodes.getNode(
           this.edges.getEdgeByChild(node.pk) &&
             this.edges.getEdgeByChild(node.pk).sid
@@ -573,7 +571,8 @@ class Graph extends GraphRender {
           },
           countLeaf() {
             // return this.nodeList.filter(node => node.leaf).length;
-            return this.nodeList.filter(node => node.joints.right === null).length;
+            return this.nodeList.filter(node => node.joints.right === null)
+              .length;
           },
           appendNode(node) {
             if (!(node instanceof Node))

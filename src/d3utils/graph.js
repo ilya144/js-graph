@@ -32,12 +32,13 @@ class Graph extends GraphRender {
     const zoom_obj = this.create_zoom([0.8, 2.5], [6400, 4096], () => {
       entry.attr("transform", d3.event.transform);
 
-      const dx = (d3.event.transform.x / d3.event.transform.k / 1920) * 268;
-      const dy = (d3.event.transform.y / d3.event.transform.k / 1080) * 130;
+      const minimapScale = 0.15;
+
+      const dx = (d3.event.transform.x / d3.event.transform.k) * minimapScale;
+      const dy = (d3.event.transform.y / d3.event.transform.k) * minimapScale;
 
       const winWidth = main_svg.node().getBoundingClientRect().width;
       const winHeight = main_svg.node().getBoundingClientRect().height;
-      const minimapScale = 0.15;
 
       d3.select(".minimap > svg > rect")
         .attr("width", (winWidth * minimapScale) / d3.event.transform.k)

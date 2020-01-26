@@ -27,8 +27,7 @@ class Graph extends GraphRender {
 
     const root = d3.select(entryRef);
     const main_svg = this.create_svg(root, entryRef);
-    const outer = main_svg.append("g");
-    const entry = outer.append("g");
+    const entry = main_svg.append("g");
     const zoom_obj = this.create_zoom([0.8, 2.5], [6400, 4096], () => {
       entry.attr("transform", d3.event.transform);
 
@@ -45,7 +44,7 @@ class Graph extends GraphRender {
         .attr("height", (winHeight * minimapScale) / d3.event.transform.k)
         .attr("transform", `translate(${-dx},${-dy})`);
 
-      outer.node().__zoom = d3.event.transform;
+      main_svg.node().__zoom = d3.event.transform;
       d3.select(".minimap svg").node().__zoom = d3.event.transform;
 
       props.setZoom(d3.event.transform.k);
@@ -55,12 +54,21 @@ class Graph extends GraphRender {
         .attr("width", window.innerWidth - entryRef.offsetLeft)
         .attr("height", window.innerHeight - entryRef.offsetTop);
 
-      outer.call(zoom_obj.transform, outer.node().__zoom);
+      main_svg.call(zoom_obj.transform, main_svg.node().__zoom);
     };
 
-    this.main(entry, data, props);
+    // Создаем svg миникарты
+    d3.select(".minimap")
+      .append("svg")
+      .attr("width", "248")
+      .attr("height", "130");
 
-    outer.call(zoom_obj);
+    //*========== MAIN ==========*
+    this.main(entry, data, props);
+    //****************************
+
+    // Первичный вызов обработчика zoom и создание основных колбеков
+    main_svg.call(zoom_obj);
     props.setCallback({
       ...props.useCallback,
 
@@ -69,27 +77,13 @@ class Graph extends GraphRender {
         const duration = 200;
         transition.attr("transform", "translate(0, 0)").duration(duration);
         setTimeout(() => {
-          outer.call(zoom_obj.transform, d3.zoomIdentity);
+          main_svg.call(zoom_obj.transform, d3.zoomIdentity);
         }, duration);
       },
-      setZoom: k => outer.call(zoom_obj.scaleTo, k),
+      setZoom: k => main_svg.call(zoom_obj.scaleTo, k),
       callResize: window.onresize,
       callMain: () => this.main(entry, data, props)
     });
-    d3.select(".minimap")
-      .append("svg")
-      .attr("width", "248")
-      .attr("height", "130");
-
-    document
-      .querySelector(".minimap svg")
-      .appendChild(entry.node().cloneNode(true));
-
-    // Убираю нумерованную подложку
-    d3.select(".minimap svg g foreignObject").remove();
-
-    // Уменьшаем пропорционально
-    d3.select(".minimap svg g").attr("transform", "scale(0.15)");
 
     // Создаем квадрат позиционирования
     d3.select(".minimap")
@@ -102,7 +96,7 @@ class Graph extends GraphRender {
       .attr("fill-opacity", "0.05");
 
     // Подключаем обработчик изменений масштаба и положения
-    outer.call(zoom_obj.transform, d3.zoomIdentity);
+    main_svg.call(zoom_obj.transform, d3.zoomIdentity);
     d3.select(".minimap svg").call(zoom_obj);
   }
 
@@ -129,6 +123,7 @@ class Graph extends GraphRender {
     const draw_highlighted = (lvl, index) => {
       d3.select("g.nodes").remove();
       d3.select("g.edges").remove();
+
       this.make_mega_nodes(
         this.all_nodes.find(node => node.lvl === lvl && node.lvlIndex === index)
       );
@@ -138,12 +133,14 @@ class Graph extends GraphRender {
       this.draw_nodes_by_coords(entry, this.nodes.getAll());
       this.draw_edges_by_joints(entry, this.make_paths());
       this.draw_meganodes(entry, this.nodes.getAll());
+      this.copy_entry_to_minimap(entry);
       props.setHeaderText("Окружение НП по выбранному...");
     };
 
     this.draw_background(entry, Array(6), props.isVertical);
     this.draw_nodes_by_coords(entry, this.nodes.getAll(), draw_highlighted);
     this.draw_edges_by_joints(entry, this.make_paths());
+    this.copy_entry_to_minimap(entry);
   }
 
   create_svg(root, entryRef) {
@@ -162,6 +159,22 @@ class Graph extends GraphRender {
       .scaleExtent(scaleExtent)
       .translateExtent([[0, 0], translateExtentMax])
       .on("zoom", callback);
+  }
+
+  copy_entry_to_minimap(entry, scale = 0.15) {
+    d3.select(".minimap svg g").remove();
+    document
+      .querySelector(".minimap svg")
+      .insertBefore(
+        entry.node().cloneNode(true),
+        document.querySelector(".minimap svg rect")
+      );
+
+    // Убираю нумерованную подложку
+    d3.select(".minimap svg g foreignObject").remove();
+
+    // Уменьшаем пропорционально
+    d3.select(".minimap svg g").attr("transform", `scale(${scale})`);
   }
 
   // Создаю каждому узлу с несколькими родителями по дубликату на родителя

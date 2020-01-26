@@ -1,11 +1,11 @@
 {
   "name": "js-graph",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "React/d3 application for building data-based graph",
   "main": "index.js",
   "scripts": {
     "test": "echo \"hello\"",
-    "build": "webpack --env.prod",
+    "build": "webpack --env.prod && cp ./public/graph.xlsx.json ./build/",
     "start": "webpack-dev-server --env.dev" 
   },
   "repository": {
